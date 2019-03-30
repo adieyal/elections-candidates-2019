@@ -46,9 +46,15 @@ text {
 }
 
 .heading {
-    font-size: 20px;
+    font-size: 30px;
 }
 
 .x-axis-label {
     font-size: 0.8em;
+}
+
+.info-line {
+    stroke: #000;
+    stroke-width: 1px;
+    fill: none;
 }

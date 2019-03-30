@@ -719,7 +719,7 @@ svg.append("text")
 
 svg.append("path")
     .attr("d", "M0,0")
-    .attr("transform", "translate(" + xScale(60) + "," + yScale(0.01) + ")")
+    .attr("transform", "translate(" + xScale(59.7) + "," + yScale(0.038) + ")")
     .attr("style", "marker-end:url(#arrow-head);")
 
 svg.append("text")
@@ -733,8 +733,42 @@ svg.append("text")
 
 svg.append("path")
     .attr("d", "M0,0")
-    .attr("transform", "translate(" + xScale(30.5) + "," + yScale(0.01) + ") rotate(180)")
+    .attr("transform", "translate(" + xScale(30.5) + "," + yScale(0.015) + ") rotate(180)")
     .attr("style", "marker-end:url(#arrow-head);")
+
+var party_da = svg.append("g")
+party_da.append("path")
+    .attr("d", "M440,220 L500,190")
+    .classed("info-line", true)
+
+party_da.append("g")
+    .attr("transform", "translate(450,180)")
+    .append("text")
+        .text("Democratic Alliance")
+        .classed("info-text", true)
+
+var party_anc = svg.append("g")
+party_anc.append("path")
+    .attr("d", "M740,180 L700,190")
+    .classed("info-line", true)
+
+party_anc.append("g")
+    .attr("transform", "translate(750,180)")
+    .append("text")
+        .text("African National Congress")
+        .classed("info-text", true)
+
+var party_eff = svg.append("g")
+party_eff.append("path")
+    .attr("d", "M340,180 L300,100")
+    .classed("info-line", true)
+
+party_eff.append("g")
+    .attr("transform", "translate(400,90)")
+    .attr("text-anchor", "end")
+    .append("text")
+        .text("Economic Freedom Fighters")
+        .classed("info-text", true)
 
 svg.append("text")
     .attr("class", "x axis-label")
@@ -768,7 +802,7 @@ svg.append("text")
 
 svg.append("text")
 .text("Political party candidates for 2019")
-.attr("transform", "translate(" + xScale((minAge + maxAge) / 2) + "," + yScale(1) + ")")
+.attr("transform", "translate(" + xScale((minAge + maxAge) / 2) + "," + yScale(0.9) + ")")
 .attr("text-anchor", "middle")
 .classed("heading", true)
 
