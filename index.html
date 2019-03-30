@@ -1,65 +1,10 @@
 <html>
     <head>
-        <style>
-            .dot {
-              stroke: #000;
-            }
-
-            .gender-equality {
-                stroke-dasharray: 5 10;
-                stroke: #222;
-                stroke-width: 2px;
-
-            }
-
-            #tooltip {
-                display: none;
-                position: absolute;
-                border: solid thin black;
-                background-color: #fbfbb0;
-                padding: 5px;
-            }
-
-            #tooltip p {
-                padding: 0;
-                margin: 0;
-            }
-
-            #tooltip .party-name {
-                font-weight: bold;
-                margin-bottom: 5px;
-            }
-
-            .axis path, .axis line {
-              fill: none;
-              stroke: #000;
-              shape-rendering: crispEdges;
-            }
-
-            text {
-                font-family: 'Helvetica', sans-serif;
-            }
-
-            .instructions {
-                fill: #555;
-            }
-
-            .heading {
-                font-size: 20px;
-            }
-
-        </style>
+        <link rel="stylesheet" href="http://localhost:8002/dist/css/style.min.css"/>
     </head>
     <body>
-        <div id="chart"></div>
-        <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
-        <script src="scatter.js" charset="utf-8"></script>
-        <div id="tooltip">
-            <p class="party-name"></p>
-            <p class="candidates"></p>
-            <p class="women"></p>
-            <p class="men"></p>
-        </div>
+        <div id="chart" style="width:90%"></div>
+        <script src="http://localhost:8002/dist/js/main.min.js" charset="utf-8"></script>
     </body>
 
 </html>
