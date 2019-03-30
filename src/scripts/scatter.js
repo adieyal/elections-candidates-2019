@@ -644,8 +644,20 @@ var container = d3.select("#chart")
 var svg = container.append("svg")
     .attr("viewBox", "0 0 " + (width * 1.2) + " " + (height * 1.2) )
     .attr("preserveAspectRatio", "xMidYMid meet")
-    .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+svg.append("defs")
+    .append("marker")
+        .attr("id", "arrow-head")
+        .attr("markerWidth", "13")
+        .attr("markerHeight", "13")
+        .attr("refx", "5")
+        .attr("refy", "5")
+        .attr("orient", "auto")
+        .append("path")
+            .attr("d", "M0,0 L0,10 L10,5 L0,0")
+    
+svg = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 svg.append("g")
     .attr("class", "x axis")
@@ -705,20 +717,31 @@ svg.append("text")
     .text("Gender equality line")
     .attr("transform", "translate(" + xScale(31) + "," + yScale(0.51) + ")")
 
+svg.append("path")
+    .attr("d", "M0,0")
+    .attr("transform", "translate(" + xScale(60) + "," + yScale(0.01) + ")")
+    .attr("style", "marker-end:url(#arrow-head);")
+
 svg.append("text")
     .attr("class", "x axis-label")
     .attr("text-anchor", "end")
-    .attr("x", xScale(60))
-    .attr("y", yScale(0.01))
-    .text("Older candidates ⮀")
+    .attr("x", xScale(59.5))
+    .attr("y", yScale(0.015))
+    .text("Older candidates")
     .classed("x-axis-label", true);
+
+
+svg.append("path")
+    .attr("d", "M0,0")
+    .attr("transform", "translate(" + xScale(30.5) + "," + yScale(0.01) + ") rotate(180)")
+    .attr("style", "marker-end:url(#arrow-head);")
 
 svg.append("text")
     .attr("class", "x axis-label")
     .attr("text-anchor", "start")
-    .attr("x", xScale(30.3))
-    .attr("y", yScale(0.01))
-    .text("⮂ Younger candidates")
+    .attr("x", xScale(30.6))
+    .attr("y", yScale(0.015))
+    .text("Younger candidates")
     .classed("x-axis-label", true);
 
 svg.append("text")
