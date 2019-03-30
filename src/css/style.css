@@ -47,3 +47,7 @@ text {
 .heading {
     font-size: 20px;
 }
+
+.x-axis-label {
+    font-size: 0.8em;
+}

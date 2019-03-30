@@ -4104,7 +4104,7 @@
       }
   ];
 
-  var margin = {top: 19.5, right: 19.5, bottom: 65.5, left: 70},
+  var margin = {top: 19.5, right: 19.5, bottom: 80.5, left: 70},
       width = 960 - margin.right,
       height = 500 - margin.top - margin.bottom;
   var minAge = 30, maxAge = 60;
@@ -4119,7 +4119,8 @@
   var container = select("#chart");
 
   var svg = container.append("svg")
-      .attr("viewBox", "0 0 " + (width * 1.1) + " " + (height * 1.1) )
+      .attr("viewBox", "0 0 " + (width * 1.2) + " " + (height * 1.2) )
+      .attr("preserveAspectRatio", "xMidYMid meet")
       .append("g")
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
@@ -4164,7 +4165,7 @@
               tooltip.select(".candidates").text("Total candidates: " + el.total);
               tooltip.select(".men").text("Men: " + el.male);
               tooltip.select(".women").text("Women: " + el.female);
-              tooltip.select(".median-age").text("Median Age: " + el.medianAge + " years");
+              tooltip.select(".median-age").text("Median Age (Years): " + el.medianAge + " years");
           })
           .on("mouseout", function() {
               select("#tooltip").style("display", "none");
@@ -4186,7 +4187,15 @@
       .attr("text-anchor", "end")
       .attr("x", xScale(60))
       .attr("y", yScale(0.01))
-      .text("Median Age")
+      .text("Older candidates ⮀")
+      .classed("x-axis-label", true);
+
+  svg.append("text")
+      .attr("class", "x axis-label")
+      .attr("text-anchor", "start")
+      .attr("x", xScale(30.3))
+      .attr("y", yScale(0.01))
+      .text("⮂ Younger candidates")
       .classed("x-axis-label", true);
 
   svg.append("text")
@@ -4199,10 +4208,17 @@
 
 
   svg.append("text")
-  .text("Hover your mouse over the circles")
-  .attr("transform", "translate(" + xScale((minAge + maxAge) / 2) + "," + yScale(-0.111) + ")")
+  .text("Median age of candidates (years)")
+  .attr("transform", "translate(" + xScale((minAge + maxAge) / 2) + "," + yScale(-0.09) + ")")
   .attr("text-anchor", "middle")
-  .classed("instructions", true);
+  .classed("x-axis-label", true);
+
+  svg.append("text")
+  .text("Hover over the circles for more information")
+  .attr("transform", "translate(" + xScale((minAge + maxAge) / 2) + "," + yScale(-0.13) + ")")
+  .attr("text-anchor", "middle")
+  .classed("instructions", true)
+  .classed("x-axis-label", true);
 
   svg.append("text")
   .text("Political party candidates for 2019")
