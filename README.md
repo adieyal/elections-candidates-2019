@@ -4,8 +4,8 @@ Using the id numbers of candidates standing for the 2019 national and provincial
 
 # Build
 
-npm install
-npm build
+- npm install
+- npm build
 
 # Embed the code into your own website
 
