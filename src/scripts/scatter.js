@@ -688,7 +688,7 @@ svg.selectAll("circle").data(parties).enter()
             tooltip.select(".candidates").text("Total candidates: " + el.total)
             tooltip.select(".men").text("Men: " + el.male)
             tooltip.select(".women").text("Women: " + el.female)
-            tooltip.select(".median-age").text("Median Age (Years): " + el.medianAge + " years")
+            tooltip.select(".median-age").text("Median Age: " + el.medianAge + " years")
         })
         .on("mouseout", function() {
             d3.select("#tooltip").style("display", "none")
