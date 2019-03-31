@@ -693,9 +693,10 @@ svg.selectAll("circle").data(parties).enter()
         .on("mousemove", function() {
             var el = this.__data__;
             var tooltip = d3.select("#tooltip")
-                .style("top", (d3.event.pageY + 16) + "px")
-                .style("left", (d3.event.pageX + 16) + "px")
+                .style("top", (d3.event.layerY - 16) + "px")
+                .style("left", (d3.event.layerX + 16) + "px")
                 .style("display", "block")
+                .style("position", "absolute")
             tooltip.select(".party-name").text(el.party)
             tooltip.select(".candidates").text("Total candidates: " + el.total)
             tooltip.select(".men").text("Men: " + el.male)
