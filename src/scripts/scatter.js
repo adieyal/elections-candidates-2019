@@ -880,11 +880,12 @@ var margin = {top: 19.5, right: 19.5, bottom: 80.5, left: 70},
     width = 960 - margin.right,
     height = 500 - margin.top - margin.bottom;
 var minAge = 30, maxAge = 60;
+var minRadius = 0, maxRadius = 1000;
 
 var xScale = d3.scaleLinear().domain([minAge, maxAge]).range([0, width]).nice(),
     yScale = d3.scaleLinear().domain([1, 0]).range([0, height]).nice(),
     colorScale = d3.schemeCategory20,
-    radiusScale = d3.scaleLinear().domain([0, 1000]).range([0, 40]),
+    radiusScale = d3.scaleLinear().domain([minRadius, maxRadius]).range([0, 40]),
     xAxis = d3.axisBottom(xScale).ticks(12, ",d"),
     yAxis = d3.axisLeft(yScale)
 
@@ -907,15 +908,6 @@ svg.append("defs")
     
 svg = svg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-svg.append("g")
-    .attr("class", "x axis")
-    .attr("transform", "translate(0," + height + ")")
-    .call(xAxis);
-
-svg.append("g")
-    .attr("class", "y axis")
-    .call(yAxis);
 
 var position = function(dot) {
     dot
@@ -968,6 +960,23 @@ svg.selectAll("circle").data(parties).enter()
         .on("mouseout", function() {
             d3.select("#tooltip").style("display", "none")
         })
+
+svg.append("rect")
+    .style("fill", "white")
+    .attr("x", xScale(minAge))
+    .attr("y", yScale(0))
+    .attr("width", xScale(maxAge))
+    .attr("height", maxRadius)
+
+svg.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(xAxis);
+
+svg.append("g")
+    .attr("class", "y axis")
+    .call(yAxis);
+
 svg.append("line")
     .classed("gender-equality", true)
     .attr("x1", xScale(minAge))

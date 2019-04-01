@@ -5506,11 +5506,12 @@
       width = 960 - margin.right,
       height = 500 - margin.top - margin.bottom;
   var minAge = 30, maxAge = 60;
+  var minRadius = 0, maxRadius = 1000;
 
   var xScale = linear$1().domain([minAge, maxAge]).range([0, width]).nice(),
       yScale = linear$1().domain([1, 0]).range([0, height]).nice(),
       colorScale = category20,
-      radiusScale = linear$1().domain([0, 1000]).range([0, 40]),
+      radiusScale = linear$1().domain([minRadius, maxRadius]).range([0, 40]),
       xAxis = axisBottom(xScale).ticks(12, ",d"),
       yAxis = axisLeft(yScale);
 
@@ -5533,15 +5534,6 @@
       
   svg = svg.append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-  svg.append("g")
-      .attr("class", "x axis")
-      .attr("transform", "translate(0," + height + ")")
-      .call(xAxis);
-
-  svg.append("g")
-      .attr("class", "y axis")
-      .call(yAxis);
 
   var position = function(dot) {
       dot
@@ -5594,6 +5586,23 @@
           .on("mouseout", function() {
               select("#tooltip").style("display", "none");
           });
+
+  svg.append("rect")
+      .style("fill", "white")
+      .attr("x", xScale(minAge))
+      .attr("y", yScale(0))
+      .attr("width", xScale(maxAge))
+      .attr("height", maxRadius);
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+
   svg.append("line")
       .classed("gender-equality", true)
       .attr("x1", xScale(minAge))
