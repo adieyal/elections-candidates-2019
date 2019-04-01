@@ -4650,7 +4650,8 @@
           "femaleRatio": 0.4,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 45.5
       },
       {
           "male": 604,
@@ -4661,7 +4662,8 @@
           "femaleRatio": 0.38,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 42.5
       },
       {
           "male": 384,
@@ -4672,7 +4674,8 @@
           "femaleRatio": 0.54,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 56.0
       },
       {
           "male": 418,
@@ -4683,7 +4686,8 @@
           "femaleRatio": 0.5,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 38.0
       },
       {
           "male": 412,
@@ -4694,7 +4698,8 @@
           "femaleRatio": 0.5,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 53.5
       },
       {
           "male": 481,
@@ -4705,7 +4710,8 @@
           "femaleRatio": 0.37,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 47.0
       },
       {
           "male": 378,
@@ -4716,7 +4722,8 @@
           "femaleRatio": 0.38,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 58.0
       },
       {
           "male": 223,
@@ -4727,7 +4734,8 @@
           "femaleRatio": 0.59,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 47.0
       },
       {
           "male": 295,
@@ -4738,7 +4746,8 @@
           "femaleRatio": 0.38,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 34.5
       },
       {
           "male": 280,
@@ -4749,7 +4758,8 @@
           "femaleRatio": 0.38,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 50.5
       },
       {
           "male": 306,
@@ -4760,7 +4770,8 @@
           "femaleRatio": 0.31,
           "top10Male": 9,
           "top10Female": 1,
-          "top10FemaleRatio": 0.1
+          "top10FemaleRatio": 0.1,
+          "top10MedianAge": 57.5
       },
       {
           "male": 287,
@@ -4771,7 +4782,8 @@
           "femaleRatio": 0.33,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 59.5
       },
       {
           "male": 252,
@@ -4782,7 +4794,8 @@
           "femaleRatio": 0.38,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 45.0
       },
       {
           "male": 294,
@@ -4793,7 +4806,8 @@
           "femaleRatio": 0.27,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 45.0
       },
       {
           "male": 3,
@@ -4804,7 +4818,8 @@
           "femaleRatio": 0.99,
           "top10Male": 0,
           "top10Female": 10,
-          "top10FemaleRatio": 1.0
+          "top10FemaleRatio": 1.0,
+          "top10MedianAge": 58.0
       },
       {
           "male": 205,
@@ -4815,7 +4830,8 @@
           "femaleRatio": 0.33,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 50.0
       },
       {
           "male": 167,
@@ -4826,7 +4842,8 @@
           "femaleRatio": 0.43,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 55.0
       },
       {
           "male": 196,
@@ -4837,7 +4854,8 @@
           "femaleRatio": 0.33,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 45.0
       },
       {
           "male": 164,
@@ -4848,7 +4866,8 @@
           "femaleRatio": 0.41,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 50.0
       },
       {
           "male": 175,
@@ -4859,7 +4878,8 @@
           "femaleRatio": 0.36,
           "top10Male": 9,
           "top10Female": 1,
-          "top10FemaleRatio": 0.1
+          "top10FemaleRatio": 0.1,
+          "top10MedianAge": 55.0
       },
       {
           "male": 161,
@@ -4870,7 +4890,8 @@
           "femaleRatio": 0.38,
           "top10Male": 9,
           "top10Female": 1,
-          "top10FemaleRatio": 0.1
+          "top10FemaleRatio": 0.1,
+          "top10MedianAge": 55.0
       },
       {
           "male": 61,
@@ -4881,7 +4902,8 @@
           "femaleRatio": 0.73,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 45.0
       },
       {
           "male": 136,
@@ -4892,7 +4914,8 @@
           "femaleRatio": 0.41,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 50.0
       },
       {
           "male": 131,
@@ -4903,7 +4926,8 @@
           "femaleRatio": 0.42,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 47.0
       },
       {
           "male": 113,
@@ -4914,7 +4938,8 @@
           "femaleRatio": 0.47,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 58.0
       },
       {
           "male": 131,
@@ -4925,7 +4950,8 @@
           "femaleRatio": 0.38,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 41.0
       },
       {
           "male": 121,
@@ -4936,7 +4962,8 @@
           "femaleRatio": 0.42,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 43.5
       },
       {
           "male": 100,
@@ -4947,7 +4974,8 @@
           "femaleRatio": 0.41,
           "top10Male": 9,
           "top10Female": 1,
-          "top10FemaleRatio": 0.1
+          "top10FemaleRatio": 0.1,
+          "top10MedianAge": 56.0
       },
       {
           "male": 87,
@@ -4958,7 +4986,8 @@
           "femaleRatio": 0.47,
           "top10Male": 4,
           "top10Female": 6,
-          "top10FemaleRatio": 0.6
+          "top10FemaleRatio": 0.6,
+          "top10MedianAge": 44.5
       },
       {
           "male": 92,
@@ -4969,7 +4998,8 @@
           "femaleRatio": 0.37,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 44.5
       },
       {
           "male": 76,
@@ -4980,7 +5010,8 @@
           "femaleRatio": 0.45,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 45.5
       },
       {
           "male": 74,
@@ -4991,7 +5022,8 @@
           "femaleRatio": 0.46,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 37.0
       },
       {
           "male": 66,
@@ -5002,7 +5034,8 @@
           "femaleRatio": 0.36,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 42.0
       },
       {
           "male": 55,
@@ -5013,7 +5046,8 @@
           "femaleRatio": 0.46,
           "top10Male": 9,
           "top10Female": 1,
-          "top10FemaleRatio": 0.1
+          "top10FemaleRatio": 0.1,
+          "top10MedianAge": 62.0
       },
       {
           "male": 63,
@@ -5024,7 +5058,8 @@
           "femaleRatio": 0.34,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 56.0
       },
       {
           "male": 41,
@@ -5035,7 +5070,8 @@
           "femaleRatio": 0.57,
           "top10Male": 3,
           "top10Female": 7,
-          "top10FemaleRatio": 0.7
+          "top10FemaleRatio": 0.7,
+          "top10MedianAge": 55.0
       },
       {
           "male": 52,
@@ -5046,7 +5082,8 @@
           "femaleRatio": 0.43,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 48.0
       },
       {
           "male": 34,
@@ -5057,7 +5094,8 @@
           "femaleRatio": 0.6,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 60.0
       },
       {
           "male": 50,
@@ -5068,7 +5106,8 @@
           "femaleRatio": 0.4,
           "top10Male": 9,
           "top10Female": 1,
-          "top10FemaleRatio": 0.1
+          "top10FemaleRatio": 0.1,
+          "top10MedianAge": 70.0
       },
       {
           "male": 38,
@@ -5079,7 +5118,8 @@
           "femaleRatio": 0.46,
           "top10Male": 9,
           "top10Female": 1,
-          "top10FemaleRatio": 0.1
+          "top10FemaleRatio": 0.1,
+          "top10MedianAge": 47.0
       },
       {
           "male": 33,
@@ -5090,7 +5130,8 @@
           "femaleRatio": 0.41,
           "top10Male": 1,
           "top10Female": 9,
-          "top10FemaleRatio": 0.9
+          "top10FemaleRatio": 0.9,
+          "top10MedianAge": 40.0
       },
       {
           "male": 7,
@@ -5101,7 +5142,8 @@
           "femaleRatio": 0.88,
           "top10Male": 0,
           "top10Female": 10,
-          "top10FemaleRatio": 1.0
+          "top10FemaleRatio": 1.0,
+          "top10MedianAge": 36.0
       },
       {
           "male": 25,
@@ -5112,7 +5154,8 @@
           "femaleRatio": 0.54,
           "top10Male": 0,
           "top10Female": 10,
-          "top10FemaleRatio": 1.0
+          "top10FemaleRatio": 1.0,
+          "top10MedianAge": 55.0
       },
       {
           "male": 19,
@@ -5123,7 +5166,8 @@
           "femaleRatio": 0.59,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 48.5
       },
       {
           "male": 24,
@@ -5134,7 +5178,8 @@
           "femaleRatio": 0.48,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 45.0
       },
       {
           "male": 27,
@@ -5145,7 +5190,8 @@
           "femaleRatio": 0.4,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 45.0
       },
       {
           "male": 26,
@@ -5156,7 +5202,8 @@
           "femaleRatio": 0.33,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 60.0
       },
       {
           "male": 12,
@@ -5167,7 +5214,8 @@
           "femaleRatio": 0.68,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 38.5
       },
       {
           "male": 21,
@@ -5178,7 +5226,8 @@
           "femaleRatio": 0.4,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 52.0
       },
       {
           "male": 20,
@@ -5189,7 +5238,8 @@
           "femaleRatio": 0.43,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 51.0
       },
       {
           "male": 17,
@@ -5200,7 +5250,8 @@
           "femaleRatio": 0.45,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 58.0
       },
       {
           "male": 18,
@@ -5211,7 +5262,8 @@
           "femaleRatio": 0.42,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 50.5
       },
       {
           "male": 14,
@@ -5222,7 +5274,8 @@
           "femaleRatio": 0.53,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 40.5
       },
       {
           "male": 20,
@@ -5233,7 +5286,8 @@
           "femaleRatio": 0.31,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 39.5
       },
       {
           "male": 11,
@@ -5244,7 +5298,8 @@
           "femaleRatio": 0.59,
           "top10Male": 4,
           "top10Female": 6,
-          "top10FemaleRatio": 0.6
+          "top10FemaleRatio": 0.6,
+          "top10MedianAge": 32.5
       },
       {
           "male": 18,
@@ -5255,7 +5310,8 @@
           "femaleRatio": 0.33,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 44.5
       },
       {
           "male": 18,
@@ -5266,7 +5322,8 @@
           "femaleRatio": 0.28,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 46.0
       },
       {
           "male": 22,
@@ -5277,7 +5334,8 @@
           "femaleRatio": 0.04,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 58.0
       },
       {
           "male": 15,
@@ -5288,7 +5346,8 @@
           "femaleRatio": 0.21,
           "top10Male": 10,
           "top10Female": 0,
-          "top10FemaleRatio": 0.0
+          "top10FemaleRatio": 0.0,
+          "top10MedianAge": 38.0
       },
       {
           "male": 9,
@@ -5299,7 +5358,8 @@
           "femaleRatio": 0.5,
           "top10Male": 5,
           "top10Female": 5,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 44.0
       },
       {
           "male": 7,
@@ -5310,7 +5370,8 @@
           "femaleRatio": 0.59,
           "top10Male": 4,
           "top10Female": 6,
-          "top10FemaleRatio": 0.6
+          "top10FemaleRatio": 0.6,
+          "top10MedianAge": 34.0
       },
       {
           "male": 12,
@@ -5321,7 +5382,8 @@
           "femaleRatio": 0.2,
           "top10Male": 8,
           "top10Female": 2,
-          "top10FemaleRatio": 0.2
+          "top10FemaleRatio": 0.2,
+          "top10MedianAge": 44.5
       },
       {
           "male": 7,
@@ -5332,7 +5394,8 @@
           "femaleRatio": 0.5,
           "top10Male": 4,
           "top10Female": 6,
-          "top10FemaleRatio": 0.6
+          "top10FemaleRatio": 0.6,
+          "top10MedianAge": 39.5
       },
       {
           "male": 10,
@@ -5343,7 +5406,8 @@
           "femaleRatio": 0.29,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 51.0
       },
       {
           "male": 9,
@@ -5354,7 +5418,8 @@
           "femaleRatio": 0.31,
           "top10Male": 7,
           "top10Female": 3,
-          "top10FemaleRatio": 0.3
+          "top10FemaleRatio": 0.3,
+          "top10MedianAge": 51.0
       },
       {
           "male": 8,
@@ -5365,7 +5430,8 @@
           "femaleRatio": 0.33,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 46.0
       },
       {
           "male": 6,
@@ -5376,7 +5442,8 @@
           "femaleRatio": 0.5,
           "top10Male": 6,
           "top10Female": 4,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 49.0
       },
       {
           "male": 3,
@@ -5387,7 +5454,8 @@
           "femaleRatio": 0.73,
           "top10Male": 3,
           "top10Female": 7,
-          "top10FemaleRatio": 0.7
+          "top10FemaleRatio": 0.7,
+          "top10MedianAge": 36.5
       },
       {
           "male": 3,
@@ -5398,7 +5466,8 @@
           "femaleRatio": 0.73,
           "top10Male": 3,
           "top10Female": 7,
-          "top10FemaleRatio": 0.7
+          "top10FemaleRatio": 0.7,
+          "top10MedianAge": 46.0
       },
       {
           "male": 4,
@@ -5409,7 +5478,8 @@
           "femaleRatio": 0.6,
           "top10Male": 4,
           "top10Female": 6,
-          "top10FemaleRatio": 0.6
+          "top10FemaleRatio": 0.6,
+          "top10MedianAge": 46.5
       },
       {
           "male": 4,
@@ -5420,7 +5490,8 @@
           "femaleRatio": 0.6,
           "top10Male": 4,
           "top10Female": 6,
-          "top10FemaleRatio": 0.6
+          "top10FemaleRatio": 0.6,
+          "top10MedianAge": 36.0
       },
       {
           "male": 7,
@@ -5431,7 +5502,8 @@
           "femaleRatio": 0.22,
           "top10Male": 7,
           "top10Female": 2,
-          "top10FemaleRatio": 0.22
+          "top10FemaleRatio": 0.22,
+          "top10MedianAge": 38
       },
       {
           "male": 4,
@@ -5442,7 +5514,8 @@
           "femaleRatio": 0.56,
           "top10Male": 4,
           "top10Female": 5,
-          "top10FemaleRatio": 0.56
+          "top10FemaleRatio": 0.56,
+          "top10MedianAge": 36
       },
       {
           "male": 5,
@@ -5453,7 +5526,8 @@
           "femaleRatio": 0.38,
           "top10Male": 5,
           "top10Female": 3,
-          "top10FemaleRatio": 0.38
+          "top10FemaleRatio": 0.38,
+          "top10MedianAge": 51.0
       },
       {
           "male": 7,
@@ -5464,7 +5538,8 @@
           "femaleRatio": 0.12,
           "top10Male": 7,
           "top10Female": 1,
-          "top10FemaleRatio": 0.12
+          "top10FemaleRatio": 0.12,
+          "top10MedianAge": 49.5
       },
       {
           "male": 3,
@@ -5475,7 +5550,8 @@
           "femaleRatio": 0.5,
           "top10Male": 3,
           "top10Female": 3,
-          "top10FemaleRatio": 0.5
+          "top10FemaleRatio": 0.5,
+          "top10MedianAge": 37.5
       },
       {
           "male": 5,
@@ -5486,7 +5562,8 @@
           "femaleRatio": 0.17,
           "top10Male": 5,
           "top10Female": 1,
-          "top10FemaleRatio": 0.17
+          "top10FemaleRatio": 0.17,
+          "top10MedianAge": 47.0
       },
       {
           "male": 3,
@@ -5497,9 +5574,11 @@
           "femaleRatio": 0.4,
           "top10Male": 3,
           "top10Female": 2,
-          "top10FemaleRatio": 0.4
+          "top10FemaleRatio": 0.4,
+          "top10MedianAge": 34
       }
   ];
+
 
 
   var margin = {top: 19.5, right: 19.5, bottom: 80.5, left: 70},
@@ -5507,6 +5586,7 @@
       height = 500 - margin.top - margin.bottom;
   var minAge = 30, maxAge = 60;
   var minRadius = 0, maxRadius = 1000;
+  var transitionDuration = 2000;
 
   var xScale = linear$1().domain([minAge, maxAge]).range([0, width]).nice(),
       yScale = linear$1().domain([1, 0]).range([0, height]).nice(),
@@ -5544,7 +5624,7 @@
 
   var position10 = function(dot) {
       dot
-        .attr("cx", function(d) { return xScale(d.medianAge); })
+        .attr("cx", function(d) { return xScale(d.top10MedianAge); })
         .attr("cy", function(d) { return yScale(d.top10FemaleRatio); })
         .attr("r", function(d) { return radiusScale(d.total); });
   };
@@ -5552,12 +5632,15 @@
   var tooltip = container.append("div")
       .attr("id", "tooltip");
   tooltip.append("p").attr("class", "party-name");
+  tooltip.append("h3").text("All Candidates");
   tooltip.append("p").attr("class", "candidates");
   tooltip.append("p").attr("class", "women");
   tooltip.append("p").attr("class", "men");
   tooltip.append("p").attr("class", "median-age");
+  tooltip.append("h3").text("Top 10 Candidates");
   tooltip.append("p").attr("class", "women-top10");
   tooltip.append("p").attr("class", "men-top10");
+  tooltip.append("p").attr("class", "median-age-top10");
 
   svg.selectAll("circle").data(parties).enter()
       .append("circle")
@@ -5580,8 +5663,10 @@
               tooltip.select(".men").text("Men: " + el.male);
               tooltip.select(".women").text("Women: " + el.female);
               tooltip.select(".median-age").text("Median Age: " + el.medianAge + " years");
-              tooltip.select(".women-top10").text("Women in the top 10 places: " + el.top10Female);
-              tooltip.select(".men-top10").text("Men in the top 10 places: " + el.top10Male);
+              tooltip.select(".women-top10").text("Women: " + el.top10Female);
+
+              tooltip.select(".men-top10").text("Men: " + el.top10Male);
+              tooltip.select(".median-age-top10").text("Median age: " + el.top10MedianAge + " years");
           })
           .on("mouseout", function() {
               select("#tooltip").style("display", "none");
@@ -5707,13 +5792,13 @@
   container.append("button")
       .text("Top 10 Candidates")
       .on("click", function() {
-          selectAll(".dot").transition().duration(750).call(position10);
+          selectAll(".dot").transition().duration(transitionDuration).call(position10);
       });
 
   container.append("button")
       .text("All Candidates")
       .on("click", function() {
-          selectAll(".dot").transition().duration(750).call(position);
+          selectAll(".dot").transition().duration(transitionDuration).call(position);
       });
 
 }());

@@ -45,6 +45,7 @@ for party in parties:
     ages = [tpl[2] for tpl in ordered]
     top10_male = sum(1 for gender in genders[0:10] if gender == "male")
     top10_female = sum(1 for gender in genders[0:10] if gender == "female")
+    top10_median_age = median(ages[0:10])
 
     parties[party]["medianAge"] = median(ages)
     parties[party]["party"] = clean_names(party)
@@ -53,6 +54,7 @@ for party in parties:
     parties[party]["top10Male"] = top10_male
     parties[party]["top10Female"] = top10_female
     parties[party]["top10FemaleRatio"] = round(top10_female / (top10_male + top10_female), 2)
+    parties[party]["top10MedianAge"] = top10_median_age
 
     del parties[party]["ages"]
     output.append(parties[party])
