@@ -27,6 +27,7 @@ for row in csv.DictReader(open("all.csv")):
     idno = row["IDNumber"]
     gender = extract_gender(idno)
     age = extract_age(idno)
+    order = row["Order number"]
     
     if not party in parties:
         parties[party] = {
@@ -35,14 +36,24 @@ for row in csv.DictReader(open("all.csv")):
             "ages" : []
         }
     parties[party][gender] += 1
-    parties[party]["ages"].append(age)
+    parties[party]["ages"].append((order, gender, age))
     
 output = []
 for party in parties:
-    parties[party]["medianAge"] = median(parties[party]["ages"])
+    ordered = sorted(parties[party]["ages"], key=lambda x: x[0])
+    genders = [tpl[1] for tpl in ordered]
+    ages = [tpl[2] for tpl in ordered]
+    top10_male = sum(1 for gender in genders[0:10] if gender == "male")
+    top10_female = sum(1 for gender in genders[0:10] if gender == "female")
+
+    parties[party]["medianAge"] = median(ages)
     parties[party]["party"] = clean_names(party)
     parties[party]["total"] = len(parties[party]["ages"])
     parties[party]["femaleRatio"] = round(parties[party]["female"] / parties[party]["total"], 2)
+    parties[party]["top10Male"] = top10_male
+    parties[party]["top10Female"] = top10_female
+    parties[party]["top10FemaleRatio"] = round(top10_female / (top10_male + top10_female), 2)
+
     del parties[party]["ages"]
     output.append(parties[party])
 output = sorted(output, key=lambda el : el["total"], reverse=True)

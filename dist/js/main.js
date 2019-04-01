@@ -862,6 +862,12 @@
         : new Selection([[selector]], root);
   }
 
+  function selectAll(selector) {
+    return typeof selector === "string"
+        ? new Selection([document.querySelectorAll(selector)], [document.documentElement])
+        : new Selection([selector == null ? [] : selector], root);
+  }
+
   function ascending$1(a, b) {
     return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -1624,7 +1630,7 @@
     return d ? linear(a, d) : constant$1(isNaN(a) ? b : a);
   }
 
-  var rgb$1 = (function rgbGamma(y) {
+  var interpolateRgb = (function rgbGamma(y) {
     var color = gamma(y);
 
     function rgb$1(start, end) {
@@ -1669,7 +1675,7 @@
     };
   }
 
-  function reinterpolate(a, b) {
+  function interpolateNumber(a, b) {
     return a = +a, b -= a, function(t) {
       return a + b * t;
     };
@@ -1712,7 +1718,7 @@
     };
   }
 
-  function string(a, b) {
+  function interpolateString(a, b) {
     var bi = reA.lastIndex = reB.lastIndex = 0, // scan index for next number in b
         am, // current match in a
         bm, // current match in b
@@ -1737,7 +1743,7 @@
         else s[++i] = bm;
       } else { // interpolate non-matching numbers
         s[++i] = null;
-        q.push({i: i, x: reinterpolate(am, bm)});
+        q.push({i: i, x: interpolateNumber(am, bm)});
       }
       bi = reB.lastIndex;
     }
@@ -1763,13 +1769,13 @@
   function interpolateValue(a, b) {
     var t = typeof b, c;
     return b == null || t === "boolean" ? constant$1(b)
-        : (t === "number" ? reinterpolate
-        : t === "string" ? ((c = color(b)) ? (b = c, rgb$1) : string)
-        : b instanceof color ? rgb$1
+        : (t === "number" ? interpolateNumber
+        : t === "string" ? ((c = color(b)) ? (b = c, interpolateRgb) : interpolateString)
+        : b instanceof color ? interpolateRgb
         : b instanceof Date ? date
         : Array.isArray(b) ? array$1
         : typeof b.valueOf !== "function" && typeof b.toString !== "function" || isNaN(b) ? object
-        : reinterpolate)(a, b);
+        : interpolateNumber)(a, b);
   }
 
   function interpolateRound(a, b) {
@@ -1779,6 +1785,116 @@
   }
 
   var degrees = 180 / Math.PI;
+
+  var identity = {
+    translateX: 0,
+    translateY: 0,
+    rotate: 0,
+    skewX: 0,
+    scaleX: 1,
+    scaleY: 1
+  };
+
+  function decompose(a, b, c, d, e, f) {
+    var scaleX, scaleY, skewX;
+    if (scaleX = Math.sqrt(a * a + b * b)) a /= scaleX, b /= scaleX;
+    if (skewX = a * c + b * d) c -= a * skewX, d -= b * skewX;
+    if (scaleY = Math.sqrt(c * c + d * d)) c /= scaleY, d /= scaleY, skewX /= scaleY;
+    if (a * d < b * c) a = -a, b = -b, skewX = -skewX, scaleX = -scaleX;
+    return {
+      translateX: e,
+      translateY: f,
+      rotate: Math.atan2(b, a) * degrees,
+      skewX: Math.atan(skewX) * degrees,
+      scaleX: scaleX,
+      scaleY: scaleY
+    };
+  }
+
+  var cssNode,
+      cssRoot,
+      cssView,
+      svgNode;
+
+  function parseCss(value) {
+    if (value === "none") return identity;
+    if (!cssNode) cssNode = document.createElement("DIV"), cssRoot = document.documentElement, cssView = document.defaultView;
+    cssNode.style.transform = value;
+    value = cssView.getComputedStyle(cssRoot.appendChild(cssNode), null).getPropertyValue("transform");
+    cssRoot.removeChild(cssNode);
+    value = value.slice(7, -1).split(",");
+    return decompose(+value[0], +value[1], +value[2], +value[3], +value[4], +value[5]);
+  }
+
+  function parseSvg(value) {
+    if (value == null) return identity;
+    if (!svgNode) svgNode = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    svgNode.setAttribute("transform", value);
+    if (!(value = svgNode.transform.baseVal.consolidate())) return identity;
+    value = value.matrix;
+    return decompose(value.a, value.b, value.c, value.d, value.e, value.f);
+  }
+
+  function interpolateTransform(parse, pxComma, pxParen, degParen) {
+
+    function pop(s) {
+      return s.length ? s.pop() + " " : "";
+    }
+
+    function translate(xa, ya, xb, yb, s, q) {
+      if (xa !== xb || ya !== yb) {
+        var i = s.push("translate(", null, pxComma, null, pxParen);
+        q.push({i: i - 4, x: interpolateNumber(xa, xb)}, {i: i - 2, x: interpolateNumber(ya, yb)});
+      } else if (xb || yb) {
+        s.push("translate(" + xb + pxComma + yb + pxParen);
+      }
+    }
+
+    function rotate(a, b, s, q) {
+      if (a !== b) {
+        if (a - b > 180) b += 360; else if (b - a > 180) a += 360; // shortest path
+        q.push({i: s.push(pop(s) + "rotate(", null, degParen) - 2, x: interpolateNumber(a, b)});
+      } else if (b) {
+        s.push(pop(s) + "rotate(" + b + degParen);
+      }
+    }
+
+    function skewX(a, b, s, q) {
+      if (a !== b) {
+        q.push({i: s.push(pop(s) + "skewX(", null, degParen) - 2, x: interpolateNumber(a, b)});
+      } else if (b) {
+        s.push(pop(s) + "skewX(" + b + degParen);
+      }
+    }
+
+    function scale(xa, ya, xb, yb, s, q) {
+      if (xa !== xb || ya !== yb) {
+        var i = s.push(pop(s) + "scale(", null, ",", null, ")");
+        q.push({i: i - 4, x: interpolateNumber(xa, xb)}, {i: i - 2, x: interpolateNumber(ya, yb)});
+      } else if (xb !== 1 || yb !== 1) {
+        s.push(pop(s) + "scale(" + xb + "," + yb + ")");
+      }
+    }
+
+    return function(a, b) {
+      var s = [], // string constants and placeholders
+          q = []; // number interpolators
+      a = parse(a), b = parse(b);
+      translate(a.translateX, a.translateY, b.translateX, b.translateY, s, q);
+      rotate(a.rotate, b.rotate, s, q);
+      skewX(a.skewX, b.skewX, s, q);
+      scale(a.scaleX, a.scaleY, b.scaleX, b.scaleY, s, q);
+      a = b = null; // gc
+      return function(t) {
+        var i = -1, n = q.length, o;
+        while (++i < n) s[(o = q[i]).i] = o.x(t);
+        return s.join("");
+      };
+    };
+  }
+
+  var interpolateTransformCss = interpolateTransform(parseCss, "px, ", "px)", "deg)");
+  var interpolateTransformSvg = interpolateTransform(parseSvg, ", ", ")", ")");
 
   var rho = Math.SQRT2;
 
@@ -2063,17 +2179,17 @@
     "x": function(x) { return Math.round(x).toString(16); }
   };
 
-  function identity(x) {
+  function identity$1(x) {
     return x;
   }
 
   var prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
 
   function formatLocale(locale) {
-    var group = locale.grouping && locale.thousands ? formatGroup(locale.grouping, locale.thousands) : identity,
+    var group = locale.grouping && locale.thousands ? formatGroup(locale.grouping, locale.thousands) : identity$1,
         currency = locale.currency,
         decimal = locale.decimal,
-        numerals = locale.numerals ? formatNumerals(locale.numerals) : identity,
+        numerals = locale.numerals ? formatNumerals(locale.numerals) : identity$1,
         percent = locale.percent || "%";
 
     function newFormat(specifier) {
@@ -2317,7 +2433,7 @@
   }
 
   function linear$1() {
-    var scale = continuous(deinterpolateLinear, reinterpolate);
+    var scale = continuous(deinterpolateLinear, interpolateNumber);
 
     scale.copy = function() {
       return copy(scale, linear$1());
@@ -3309,7 +3425,7 @@
 
   var slice$1 = Array.prototype.slice;
 
-  function identity$1(x) {
+  function identity$2(x) {
     return x;
   }
 
@@ -3358,7 +3474,7 @@
 
     function axis(context) {
       var values = tickValues == null ? (scale.ticks ? scale.ticks.apply(scale, tickArguments) : scale.domain()) : tickValues,
-          format = tickFormat == null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments) : identity$1) : tickFormat,
+          format = tickFormat == null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments) : identity$2) : tickFormat,
           spacing = Math.max(tickSizeInner, 0) + tickPadding,
           range = scale.range(),
           range0 = +range[0] + 0.5,
@@ -3477,6 +3593,1053 @@
     return axis(left, scale);
   }
 
+  var noop = {value: function() {}};
+
+  function dispatch() {
+    for (var i = 0, n = arguments.length, _ = {}, t; i < n; ++i) {
+      if (!(t = arguments[i] + "") || (t in _)) throw new Error("illegal type: " + t);
+      _[t] = [];
+    }
+    return new Dispatch(_);
+  }
+
+  function Dispatch(_) {
+    this._ = _;
+  }
+
+  function parseTypenames$1(typenames, types) {
+    return typenames.trim().split(/^|\s+/).map(function(t) {
+      var name = "", i = t.indexOf(".");
+      if (i >= 0) name = t.slice(i + 1), t = t.slice(0, i);
+      if (t && !types.hasOwnProperty(t)) throw new Error("unknown type: " + t);
+      return {type: t, name: name};
+    });
+  }
+
+  Dispatch.prototype = dispatch.prototype = {
+    constructor: Dispatch,
+    on: function(typename, callback) {
+      var _ = this._,
+          T = parseTypenames$1(typename + "", _),
+          t,
+          i = -1,
+          n = T.length;
+
+      // If no callback was specified, return the callback of the given type and name.
+      if (arguments.length < 2) {
+        while (++i < n) if ((t = (typename = T[i]).type) && (t = get(_[t], typename.name))) return t;
+        return;
+      }
+
+      // If a type was specified, set the callback for the given type and name.
+      // Otherwise, if a null callback was specified, remove callbacks of the given name.
+      if (callback != null && typeof callback !== "function") throw new Error("invalid callback: " + callback);
+      while (++i < n) {
+        if (t = (typename = T[i]).type) _[t] = set$1(_[t], typename.name, callback);
+        else if (callback == null) for (t in _) _[t] = set$1(_[t], typename.name, null);
+      }
+
+      return this;
+    },
+    copy: function() {
+      var copy = {}, _ = this._;
+      for (var t in _) copy[t] = _[t].slice();
+      return new Dispatch(copy);
+    },
+    call: function(type, that) {
+      if ((n = arguments.length - 2) > 0) for (var args = new Array(n), i = 0, n, t; i < n; ++i) args[i] = arguments[i + 2];
+      if (!this._.hasOwnProperty(type)) throw new Error("unknown type: " + type);
+      for (t = this._[type], i = 0, n = t.length; i < n; ++i) t[i].value.apply(that, args);
+    },
+    apply: function(type, that, args) {
+      if (!this._.hasOwnProperty(type)) throw new Error("unknown type: " + type);
+      for (var t = this._[type], i = 0, n = t.length; i < n; ++i) t[i].value.apply(that, args);
+    }
+  };
+
+  function get(type, name) {
+    for (var i = 0, n = type.length, c; i < n; ++i) {
+      if ((c = type[i]).name === name) {
+        return c.value;
+      }
+    }
+  }
+
+  function set$1(type, name, callback) {
+    for (var i = 0, n = type.length; i < n; ++i) {
+      if (type[i].name === name) {
+        type[i] = noop, type = type.slice(0, i).concat(type.slice(i + 1));
+        break;
+      }
+    }
+    if (callback != null) type.push({name: name, value: callback});
+    return type;
+  }
+
+  var frame = 0, // is an animation frame pending?
+      timeout = 0, // is a timeout pending?
+      interval = 0, // are any timers active?
+      pokeDelay = 1000, // how frequently we check for clock skew
+      taskHead,
+      taskTail,
+      clockLast = 0,
+      clockNow = 0,
+      clockSkew = 0,
+      clock = typeof performance === "object" && performance.now ? performance : Date,
+      setFrame = typeof window === "object" && window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(f) { setTimeout(f, 17); };
+
+  function now() {
+    return clockNow || (setFrame(clearNow), clockNow = clock.now() + clockSkew);
+  }
+
+  function clearNow() {
+    clockNow = 0;
+  }
+
+  function Timer() {
+    this._call =
+    this._time =
+    this._next = null;
+  }
+
+  Timer.prototype = timer.prototype = {
+    constructor: Timer,
+    restart: function(callback, delay, time) {
+      if (typeof callback !== "function") throw new TypeError("callback is not a function");
+      time = (time == null ? now() : +time) + (delay == null ? 0 : +delay);
+      if (!this._next && taskTail !== this) {
+        if (taskTail) taskTail._next = this;
+        else taskHead = this;
+        taskTail = this;
+      }
+      this._call = callback;
+      this._time = time;
+      sleep();
+    },
+    stop: function() {
+      if (this._call) {
+        this._call = null;
+        this._time = Infinity;
+        sleep();
+      }
+    }
+  };
+
+  function timer(callback, delay, time) {
+    var t = new Timer;
+    t.restart(callback, delay, time);
+    return t;
+  }
+
+  function timerFlush() {
+    now(); // Get the current time, if not already set.
+    ++frame; // Pretend we’ve set an alarm, if we haven’t already.
+    var t = taskHead, e;
+    while (t) {
+      if ((e = clockNow - t._time) >= 0) t._call.call(null, e);
+      t = t._next;
+    }
+    --frame;
+  }
+
+  function wake() {
+    clockNow = (clockLast = clock.now()) + clockSkew;
+    frame = timeout = 0;
+    try {
+      timerFlush();
+    } finally {
+      frame = 0;
+      nap();
+      clockNow = 0;
+    }
+  }
+
+  function poke() {
+    var now = clock.now(), delay = now - clockLast;
+    if (delay > pokeDelay) clockSkew -= delay, clockLast = now;
+  }
+
+  function nap() {
+    var t0, t1 = taskHead, t2, time = Infinity;
+    while (t1) {
+      if (t1._call) {
+        if (time > t1._time) time = t1._time;
+        t0 = t1, t1 = t1._next;
+      } else {
+        t2 = t1._next, t1._next = null;
+        t1 = t0 ? t0._next = t2 : taskHead = t2;
+      }
+    }
+    taskTail = t0;
+    sleep(time);
+  }
+
+  function sleep(time) {
+    if (frame) return; // Soonest alarm already set, or will be.
+    if (timeout) timeout = clearTimeout(timeout);
+    var delay = time - clockNow; // Strictly less than if we recomputed clockNow.
+    if (delay > 24) {
+      if (time < Infinity) timeout = setTimeout(wake, time - clock.now() - clockSkew);
+      if (interval) interval = clearInterval(interval);
+    } else {
+      if (!interval) clockLast = clock.now(), interval = setInterval(poke, pokeDelay);
+      frame = 1, setFrame(wake);
+    }
+  }
+
+  function timeout$1(callback, delay, time) {
+    var t = new Timer;
+    delay = delay == null ? 0 : +delay;
+    t.restart(function(elapsed) {
+      t.stop();
+      callback(elapsed + delay);
+    }, delay, time);
+    return t;
+  }
+
+  var emptyOn = dispatch("start", "end", "cancel", "interrupt");
+  var emptyTween = [];
+
+  var CREATED = 0;
+  var SCHEDULED = 1;
+  var STARTING = 2;
+  var STARTED = 3;
+  var RUNNING = 4;
+  var ENDING = 5;
+  var ENDED = 6;
+
+  function schedule(node, name, id, index, group, timing) {
+    var schedules = node.__transition;
+    if (!schedules) node.__transition = {};
+    else if (id in schedules) return;
+    create(node, id, {
+      name: name,
+      index: index, // For context during callback.
+      group: group, // For context during callback.
+      on: emptyOn,
+      tween: emptyTween,
+      time: timing.time,
+      delay: timing.delay,
+      duration: timing.duration,
+      ease: timing.ease,
+      timer: null,
+      state: CREATED
+    });
+  }
+
+  function init(node, id) {
+    var schedule = get$1(node, id);
+    if (schedule.state > CREATED) throw new Error("too late; already scheduled");
+    return schedule;
+  }
+
+  function set$2(node, id) {
+    var schedule = get$1(node, id);
+    if (schedule.state > STARTED) throw new Error("too late; already running");
+    return schedule;
+  }
+
+  function get$1(node, id) {
+    var schedule = node.__transition;
+    if (!schedule || !(schedule = schedule[id])) throw new Error("transition not found");
+    return schedule;
+  }
+
+  function create(node, id, self) {
+    var schedules = node.__transition,
+        tween;
+
+    // Initialize the self timer when the transition is created.
+    // Note the actual delay is not known until the first callback!
+    schedules[id] = self;
+    self.timer = timer(schedule, 0, self.time);
+
+    function schedule(elapsed) {
+      self.state = SCHEDULED;
+      self.timer.restart(start, self.delay, self.time);
+
+      // If the elapsed delay is less than our first sleep, start immediately.
+      if (self.delay <= elapsed) start(elapsed - self.delay);
+    }
+
+    function start(elapsed) {
+      var i, j, n, o;
+
+      // If the state is not SCHEDULED, then we previously errored on start.
+      if (self.state !== SCHEDULED) return stop();
+
+      for (i in schedules) {
+        o = schedules[i];
+        if (o.name !== self.name) continue;
+
+        // While this element already has a starting transition during this frame,
+        // defer starting an interrupting transition until that transition has a
+        // chance to tick (and possibly end); see d3/d3-transition#54!
+        if (o.state === STARTED) return timeout$1(start);
+
+        // Interrupt the active transition, if any.
+        if (o.state === RUNNING) {
+          o.state = ENDED;
+          o.timer.stop();
+          o.on.call("interrupt", node, node.__data__, o.index, o.group);
+          delete schedules[i];
+        }
+
+        // Cancel any pre-empted transitions.
+        else if (+i < id) {
+          o.state = ENDED;
+          o.timer.stop();
+          o.on.call("cancel", node, node.__data__, o.index, o.group);
+          delete schedules[i];
+        }
+      }
+
+      // Defer the first tick to end of the current frame; see d3/d3#1576.
+      // Note the transition may be canceled after start and before the first tick!
+      // Note this must be scheduled before the start event; see d3/d3-transition#16!
+      // Assuming this is successful, subsequent callbacks go straight to tick.
+      timeout$1(function() {
+        if (self.state === STARTED) {
+          self.state = RUNNING;
+          self.timer.restart(tick, self.delay, self.time);
+          tick(elapsed);
+        }
+      });
+
+      // Dispatch the start event.
+      // Note this must be done before the tween are initialized.
+      self.state = STARTING;
+      self.on.call("start", node, node.__data__, self.index, self.group);
+      if (self.state !== STARTING) return; // interrupted
+      self.state = STARTED;
+
+      // Initialize the tween, deleting null tween.
+      tween = new Array(n = self.tween.length);
+      for (i = 0, j = -1; i < n; ++i) {
+        if (o = self.tween[i].value.call(node, node.__data__, self.index, self.group)) {
+          tween[++j] = o;
+        }
+      }
+      tween.length = j + 1;
+    }
+
+    function tick(elapsed) {
+      var t = elapsed < self.duration ? self.ease.call(null, elapsed / self.duration) : (self.timer.restart(stop), self.state = ENDING, 1),
+          i = -1,
+          n = tween.length;
+
+      while (++i < n) {
+        tween[i].call(node, t);
+      }
+
+      // Dispatch the end event.
+      if (self.state === ENDING) {
+        self.on.call("end", node, node.__data__, self.index, self.group);
+        stop();
+      }
+    }
+
+    function stop() {
+      self.state = ENDED;
+      self.timer.stop();
+      delete schedules[id];
+      for (var i in schedules) return; // eslint-disable-line no-unused-vars
+      delete node.__transition;
+    }
+  }
+
+  function interrupt(node, name) {
+    var schedules = node.__transition,
+        schedule,
+        active,
+        empty = true,
+        i;
+
+    if (!schedules) return;
+
+    name = name == null ? null : name + "";
+
+    for (i in schedules) {
+      if ((schedule = schedules[i]).name !== name) { empty = false; continue; }
+      active = schedule.state > STARTING && schedule.state < ENDING;
+      schedule.state = ENDED;
+      schedule.timer.stop();
+      schedule.on.call(active ? "interrupt" : "cancel", node, node.__data__, schedule.index, schedule.group);
+      delete schedules[i];
+    }
+
+    if (empty) delete node.__transition;
+  }
+
+  function selection_interrupt(name) {
+    return this.each(function() {
+      interrupt(this, name);
+    });
+  }
+
+  function tweenRemove(id, name) {
+    var tween0, tween1;
+    return function() {
+      var schedule = set$2(this, id),
+          tween = schedule.tween;
+
+      // If this node shared tween with the previous node,
+      // just assign the updated shared tween and we’re done!
+      // Otherwise, copy-on-write.
+      if (tween !== tween0) {
+        tween1 = tween0 = tween;
+        for (var i = 0, n = tween1.length; i < n; ++i) {
+          if (tween1[i].name === name) {
+            tween1 = tween1.slice();
+            tween1.splice(i, 1);
+            break;
+          }
+        }
+      }
+
+      schedule.tween = tween1;
+    };
+  }
+
+  function tweenFunction(id, name, value) {
+    var tween0, tween1;
+    if (typeof value !== "function") throw new Error;
+    return function() {
+      var schedule = set$2(this, id),
+          tween = schedule.tween;
+
+      // If this node shared tween with the previous node,
+      // just assign the updated shared tween and we’re done!
+      // Otherwise, copy-on-write.
+      if (tween !== tween0) {
+        tween1 = (tween0 = tween).slice();
+        for (var t = {name: name, value: value}, i = 0, n = tween1.length; i < n; ++i) {
+          if (tween1[i].name === name) {
+            tween1[i] = t;
+            break;
+          }
+        }
+        if (i === n) tween1.push(t);
+      }
+
+      schedule.tween = tween1;
+    };
+  }
+
+  function transition_tween(name, value) {
+    var id = this._id;
+
+    name += "";
+
+    if (arguments.length < 2) {
+      var tween = get$1(this.node(), id).tween;
+      for (var i = 0, n = tween.length, t; i < n; ++i) {
+        if ((t = tween[i]).name === name) {
+          return t.value;
+        }
+      }
+      return null;
+    }
+
+    return this.each((value == null ? tweenRemove : tweenFunction)(id, name, value));
+  }
+
+  function tweenValue(transition, name, value) {
+    var id = transition._id;
+
+    transition.each(function() {
+      var schedule = set$2(this, id);
+      (schedule.value || (schedule.value = {}))[name] = value.apply(this, arguments);
+    });
+
+    return function(node) {
+      return get$1(node, id).value[name];
+    };
+  }
+
+  function interpolate(a, b) {
+    var c;
+    return (typeof b === "number" ? interpolateNumber
+        : b instanceof color ? interpolateRgb
+        : (c = color(b)) ? (b = c, interpolateRgb)
+        : interpolateString)(a, b);
+  }
+
+  function attrRemove$1(name) {
+    return function() {
+      this.removeAttribute(name);
+    };
+  }
+
+  function attrRemoveNS$1(fullname) {
+    return function() {
+      this.removeAttributeNS(fullname.space, fullname.local);
+    };
+  }
+
+  function attrConstant$1(name, interpolate, value1) {
+    var string00,
+        string1 = value1 + "",
+        interpolate0;
+    return function() {
+      var string0 = this.getAttribute(name);
+      return string0 === string1 ? null
+          : string0 === string00 ? interpolate0
+          : interpolate0 = interpolate(string00 = string0, value1);
+    };
+  }
+
+  function attrConstantNS$1(fullname, interpolate, value1) {
+    var string00,
+        string1 = value1 + "",
+        interpolate0;
+    return function() {
+      var string0 = this.getAttributeNS(fullname.space, fullname.local);
+      return string0 === string1 ? null
+          : string0 === string00 ? interpolate0
+          : interpolate0 = interpolate(string00 = string0, value1);
+    };
+  }
+
+  function attrFunction$1(name, interpolate, value) {
+    var string00,
+        string10,
+        interpolate0;
+    return function() {
+      var string0, value1 = value(this), string1;
+      if (value1 == null) return void this.removeAttribute(name);
+      string0 = this.getAttribute(name);
+      string1 = value1 + "";
+      return string0 === string1 ? null
+          : string0 === string00 && string1 === string10 ? interpolate0
+          : (string10 = string1, interpolate0 = interpolate(string00 = string0, value1));
+    };
+  }
+
+  function attrFunctionNS$1(fullname, interpolate, value) {
+    var string00,
+        string10,
+        interpolate0;
+    return function() {
+      var string0, value1 = value(this), string1;
+      if (value1 == null) return void this.removeAttributeNS(fullname.space, fullname.local);
+      string0 = this.getAttributeNS(fullname.space, fullname.local);
+      string1 = value1 + "";
+      return string0 === string1 ? null
+          : string0 === string00 && string1 === string10 ? interpolate0
+          : (string10 = string1, interpolate0 = interpolate(string00 = string0, value1));
+    };
+  }
+
+  function transition_attr(name, value) {
+    var fullname = namespace(name), i = fullname === "transform" ? interpolateTransformSvg : interpolate;
+    return this.attrTween(name, typeof value === "function"
+        ? (fullname.local ? attrFunctionNS$1 : attrFunction$1)(fullname, i, tweenValue(this, "attr." + name, value))
+        : value == null ? (fullname.local ? attrRemoveNS$1 : attrRemove$1)(fullname)
+        : (fullname.local ? attrConstantNS$1 : attrConstant$1)(fullname, i, value));
+  }
+
+  function attrInterpolate(name, i) {
+    return function(t) {
+      this.setAttribute(name, i(t));
+    };
+  }
+
+  function attrInterpolateNS(fullname, i) {
+    return function(t) {
+      this.setAttributeNS(fullname.space, fullname.local, i(t));
+    };
+  }
+
+  function attrTweenNS(fullname, value) {
+    var t0, i0;
+    function tween() {
+      var i = value.apply(this, arguments);
+      if (i !== i0) t0 = (i0 = i) && attrInterpolateNS(fullname, i);
+      return t0;
+    }
+    tween._value = value;
+    return tween;
+  }
+
+  function attrTween(name, value) {
+    var t0, i0;
+    function tween() {
+      var i = value.apply(this, arguments);
+      if (i !== i0) t0 = (i0 = i) && attrInterpolate(name, i);
+      return t0;
+    }
+    tween._value = value;
+    return tween;
+  }
+
+  function transition_attrTween(name, value) {
+    var key = "attr." + name;
+    if (arguments.length < 2) return (key = this.tween(key)) && key._value;
+    if (value == null) return this.tween(key, null);
+    if (typeof value !== "function") throw new Error;
+    var fullname = namespace(name);
+    return this.tween(key, (fullname.local ? attrTweenNS : attrTween)(fullname, value));
+  }
+
+  function delayFunction(id, value) {
+    return function() {
+      init(this, id).delay = +value.apply(this, arguments);
+    };
+  }
+
+  function delayConstant(id, value) {
+    return value = +value, function() {
+      init(this, id).delay = value;
+    };
+  }
+
+  function transition_delay(value) {
+    var id = this._id;
+
+    return arguments.length
+        ? this.each((typeof value === "function"
+            ? delayFunction
+            : delayConstant)(id, value))
+        : get$1(this.node(), id).delay;
+  }
+
+  function durationFunction(id, value) {
+    return function() {
+      set$2(this, id).duration = +value.apply(this, arguments);
+    };
+  }
+
+  function durationConstant(id, value) {
+    return value = +value, function() {
+      set$2(this, id).duration = value;
+    };
+  }
+
+  function transition_duration(value) {
+    var id = this._id;
+
+    return arguments.length
+        ? this.each((typeof value === "function"
+            ? durationFunction
+            : durationConstant)(id, value))
+        : get$1(this.node(), id).duration;
+  }
+
+  function easeConstant(id, value) {
+    if (typeof value !== "function") throw new Error;
+    return function() {
+      set$2(this, id).ease = value;
+    };
+  }
+
+  function transition_ease(value) {
+    var id = this._id;
+
+    return arguments.length
+        ? this.each(easeConstant(id, value))
+        : get$1(this.node(), id).ease;
+  }
+
+  function transition_filter(match) {
+    if (typeof match !== "function") match = matcher(match);
+
+    for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
+      for (var group = groups[j], n = group.length, subgroup = subgroups[j] = [], node, i = 0; i < n; ++i) {
+        if ((node = group[i]) && match.call(node, node.__data__, i, group)) {
+          subgroup.push(node);
+        }
+      }
+    }
+
+    return new Transition(subgroups, this._parents, this._name, this._id);
+  }
+
+  function transition_merge(transition) {
+    if (transition._id !== this._id) throw new Error;
+
+    for (var groups0 = this._groups, groups1 = transition._groups, m0 = groups0.length, m1 = groups1.length, m = Math.min(m0, m1), merges = new Array(m0), j = 0; j < m; ++j) {
+      for (var group0 = groups0[j], group1 = groups1[j], n = group0.length, merge = merges[j] = new Array(n), node, i = 0; i < n; ++i) {
+        if (node = group0[i] || group1[i]) {
+          merge[i] = node;
+        }
+      }
+    }
+
+    for (; j < m0; ++j) {
+      merges[j] = groups0[j];
+    }
+
+    return new Transition(merges, this._parents, this._name, this._id);
+  }
+
+  function start(name) {
+    return (name + "").trim().split(/^|\s+/).every(function(t) {
+      var i = t.indexOf(".");
+      if (i >= 0) t = t.slice(0, i);
+      return !t || t === "start";
+    });
+  }
+
+  function onFunction(id, name, listener) {
+    var on0, on1, sit = start(name) ? init : set$2;
+    return function() {
+      var schedule = sit(this, id),
+          on = schedule.on;
+
+      // If this node shared a dispatch with the previous node,
+      // just assign the updated shared dispatch and we’re done!
+      // Otherwise, copy-on-write.
+      if (on !== on0) (on1 = (on0 = on).copy()).on(name, listener);
+
+      schedule.on = on1;
+    };
+  }
+
+  function transition_on(name, listener) {
+    var id = this._id;
+
+    return arguments.length < 2
+        ? get$1(this.node(), id).on.on(name)
+        : this.each(onFunction(id, name, listener));
+  }
+
+  function removeFunction(id) {
+    return function() {
+      var parent = this.parentNode;
+      for (var i in this.__transition) if (+i !== id) return;
+      if (parent) parent.removeChild(this);
+    };
+  }
+
+  function transition_remove() {
+    return this.on("end.remove", removeFunction(this._id));
+  }
+
+  function transition_select(select) {
+    var name = this._name,
+        id = this._id;
+
+    if (typeof select !== "function") select = selector(select);
+
+    for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
+      for (var group = groups[j], n = group.length, subgroup = subgroups[j] = new Array(n), node, subnode, i = 0; i < n; ++i) {
+        if ((node = group[i]) && (subnode = select.call(node, node.__data__, i, group))) {
+          if ("__data__" in node) subnode.__data__ = node.__data__;
+          subgroup[i] = subnode;
+          schedule(subgroup[i], name, id, i, subgroup, get$1(node, id));
+        }
+      }
+    }
+
+    return new Transition(subgroups, this._parents, name, id);
+  }
+
+  function transition_selectAll(select) {
+    var name = this._name,
+        id = this._id;
+
+    if (typeof select !== "function") select = selectorAll(select);
+
+    for (var groups = this._groups, m = groups.length, subgroups = [], parents = [], j = 0; j < m; ++j) {
+      for (var group = groups[j], n = group.length, node, i = 0; i < n; ++i) {
+        if (node = group[i]) {
+          for (var children = select.call(node, node.__data__, i, group), child, inherit = get$1(node, id), k = 0, l = children.length; k < l; ++k) {
+            if (child = children[k]) {
+              schedule(child, name, id, k, children, inherit);
+            }
+          }
+          subgroups.push(children);
+          parents.push(node);
+        }
+      }
+    }
+
+    return new Transition(subgroups, parents, name, id);
+  }
+
+  var Selection$1 = selection.prototype.constructor;
+
+  function transition_selection() {
+    return new Selection$1(this._groups, this._parents);
+  }
+
+  function styleNull(name, interpolate) {
+    var string00,
+        string10,
+        interpolate0;
+    return function() {
+      var string0 = styleValue(this, name),
+          string1 = (this.style.removeProperty(name), styleValue(this, name));
+      return string0 === string1 ? null
+          : string0 === string00 && string1 === string10 ? interpolate0
+          : interpolate0 = interpolate(string00 = string0, string10 = string1);
+    };
+  }
+
+  function styleRemove$1(name) {
+    return function() {
+      this.style.removeProperty(name);
+    };
+  }
+
+  function styleConstant$1(name, interpolate, value1) {
+    var string00,
+        string1 = value1 + "",
+        interpolate0;
+    return function() {
+      var string0 = styleValue(this, name);
+      return string0 === string1 ? null
+          : string0 === string00 ? interpolate0
+          : interpolate0 = interpolate(string00 = string0, value1);
+    };
+  }
+
+  function styleFunction$1(name, interpolate, value) {
+    var string00,
+        string10,
+        interpolate0;
+    return function() {
+      var string0 = styleValue(this, name),
+          value1 = value(this),
+          string1 = value1 + "";
+      if (value1 == null) string1 = value1 = (this.style.removeProperty(name), styleValue(this, name));
+      return string0 === string1 ? null
+          : string0 === string00 && string1 === string10 ? interpolate0
+          : (string10 = string1, interpolate0 = interpolate(string00 = string0, value1));
+    };
+  }
+
+  function styleMaybeRemove(id, name) {
+    var on0, on1, listener0, key = "style." + name, event = "end." + key, remove;
+    return function() {
+      var schedule = set$2(this, id),
+          on = schedule.on,
+          listener = schedule.value[key] == null ? remove || (remove = styleRemove$1(name)) : undefined;
+
+      // If this node shared a dispatch with the previous node,
+      // just assign the updated shared dispatch and we’re done!
+      // Otherwise, copy-on-write.
+      if (on !== on0 || listener0 !== listener) (on1 = (on0 = on).copy()).on(event, listener0 = listener);
+
+      schedule.on = on1;
+    };
+  }
+
+  function transition_style(name, value, priority) {
+    var i = (name += "") === "transform" ? interpolateTransformCss : interpolate;
+    return value == null ? this
+        .styleTween(name, styleNull(name, i))
+        .on("end.style." + name, styleRemove$1(name))
+      : typeof value === "function" ? this
+        .styleTween(name, styleFunction$1(name, i, tweenValue(this, "style." + name, value)))
+        .each(styleMaybeRemove(this._id, name))
+      : this
+        .styleTween(name, styleConstant$1(name, i, value), priority)
+        .on("end.style." + name, null);
+  }
+
+  function styleInterpolate(name, i, priority) {
+    return function(t) {
+      this.style.setProperty(name, i(t), priority);
+    };
+  }
+
+  function styleTween(name, value, priority) {
+    var t, i0;
+    function tween() {
+      var i = value.apply(this, arguments);
+      if (i !== i0) t = (i0 = i) && styleInterpolate(name, i, priority);
+      return t;
+    }
+    tween._value = value;
+    return tween;
+  }
+
+  function transition_styleTween(name, value, priority) {
+    var key = "style." + (name += "");
+    if (arguments.length < 2) return (key = this.tween(key)) && key._value;
+    if (value == null) return this.tween(key, null);
+    if (typeof value !== "function") throw new Error;
+    return this.tween(key, styleTween(name, value, priority == null ? "" : priority));
+  }
+
+  function textConstant$1(value) {
+    return function() {
+      this.textContent = value;
+    };
+  }
+
+  function textFunction$1(value) {
+    return function() {
+      var value1 = value(this);
+      this.textContent = value1 == null ? "" : value1;
+    };
+  }
+
+  function transition_text(value) {
+    return this.tween("text", typeof value === "function"
+        ? textFunction$1(tweenValue(this, "text", value))
+        : textConstant$1(value == null ? "" : value + ""));
+  }
+
+  function transition_transition() {
+    var name = this._name,
+        id0 = this._id,
+        id1 = newId();
+
+    for (var groups = this._groups, m = groups.length, j = 0; j < m; ++j) {
+      for (var group = groups[j], n = group.length, node, i = 0; i < n; ++i) {
+        if (node = group[i]) {
+          var inherit = get$1(node, id0);
+          schedule(node, name, id1, i, group, {
+            time: inherit.time + inherit.delay + inherit.duration,
+            delay: 0,
+            duration: inherit.duration,
+            ease: inherit.ease
+          });
+        }
+      }
+    }
+
+    return new Transition(groups, this._parents, name, id1);
+  }
+
+  function transition_end() {
+    var on0, on1, that = this, id = that._id, size = that.size();
+    return new Promise(function(resolve, reject) {
+      var cancel = {value: reject},
+          end = {value: function() { if (--size === 0) resolve(); }};
+
+      that.each(function() {
+        var schedule = set$2(this, id),
+            on = schedule.on;
+
+        // If this node shared a dispatch with the previous node,
+        // just assign the updated shared dispatch and we’re done!
+        // Otherwise, copy-on-write.
+        if (on !== on0) {
+          on1 = (on0 = on).copy();
+          on1._.cancel.push(cancel);
+          on1._.interrupt.push(cancel);
+          on1._.end.push(end);
+        }
+
+        schedule.on = on1;
+      });
+    });
+  }
+
+  var id = 0;
+
+  function Transition(groups, parents, name, id) {
+    this._groups = groups;
+    this._parents = parents;
+    this._name = name;
+    this._id = id;
+  }
+
+  function transition(name) {
+    return selection().transition(name);
+  }
+
+  function newId() {
+    return ++id;
+  }
+
+  var selection_prototype = selection.prototype;
+
+  Transition.prototype = transition.prototype = {
+    constructor: Transition,
+    select: transition_select,
+    selectAll: transition_selectAll,
+    filter: transition_filter,
+    merge: transition_merge,
+    selection: transition_selection,
+    transition: transition_transition,
+    call: selection_prototype.call,
+    nodes: selection_prototype.nodes,
+    node: selection_prototype.node,
+    size: selection_prototype.size,
+    empty: selection_prototype.empty,
+    each: selection_prototype.each,
+    on: transition_on,
+    attr: transition_attr,
+    attrTween: transition_attrTween,
+    style: transition_style,
+    styleTween: transition_styleTween,
+    text: transition_text,
+    remove: transition_remove,
+    tween: transition_tween,
+    delay: transition_delay,
+    duration: transition_duration,
+    ease: transition_ease,
+    end: transition_end
+  };
+
+  function cubicInOut(t) {
+    return ((t *= 2) <= 1 ? t * t * t : (t -= 2) * t * t + 2) / 2;
+  }
+
+  var pi = Math.PI;
+
+  var tau = 2 * Math.PI;
+
+  var defaultTiming = {
+    time: null, // Set on use.
+    delay: 0,
+    duration: 250,
+    ease: cubicInOut
+  };
+
+  function inherit(node, id) {
+    var timing;
+    while (!(timing = node.__transition) || !(timing = timing[id])) {
+      if (!(node = node.parentNode)) {
+        return defaultTiming.time = now(), defaultTiming;
+      }
+    }
+    return timing;
+  }
+
+  function selection_transition(name) {
+    var id,
+        timing;
+
+    if (name instanceof Transition) {
+      id = name._id, name = name._name;
+    } else {
+      id = newId(), (timing = defaultTiming).time = now(), name = name == null ? null : name + "";
+    }
+
+    for (var groups = this._groups, m = groups.length, j = 0; j < m; ++j) {
+      for (var group = groups[j], n = group.length, node, i = 0; i < n; ++i) {
+        if (node = group[i]) {
+          schedule(node, name, id, i, group, timing || inherit(node, id));
+        }
+      }
+    }
+
+    return new Transition(groups, this._parents, name, id);
+  }
+
+  selection.prototype.interrupt = selection_interrupt;
+  selection.prototype.transition = selection_transition;
+
+  var party_colors = {
+      "African National Congress" : "#00993f",
+      "Democratic Alliance" : "#015ca3",
+      "Inkatha Freedom Party" : "e91c23",
+      "Economic Freedom Fighters" : "#850000",
+      "Congress  Of The People" : "#ffca08",
+      "African Christian Democratic Party" : "#005284",
+      "United Democratic Movement" : "#fdb415",
+      "Vryheidsfront Plus" : "#017f01",
+      "Agang South Africa" : "#00764b",
+      "Azanian People's Organisation" : "#622f06",
+      "Pan Africanist Congress of Azania" : "#036637",
+  };
+
   var parties = [
       {
           "male": 620,
@@ -3484,7 +4647,10 @@
           "medianAge": 43.0,
           "party": "Democratic Alliance",
           "total": 1030,
-          "femaleRatio": 0.4
+          "femaleRatio": 0.4,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 604,
@@ -3492,7 +4658,10 @@
           "medianAge": 43,
           "party": "African Transformation Movement",
           "total": 975,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 384,
@@ -3500,7 +4669,10 @@
           "medianAge": 43,
           "party": "African People's Convention",
           "total": 841,
-          "femaleRatio": 0.54
+          "femaleRatio": 0.54,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 418,
@@ -3508,7 +4680,10 @@
           "medianAge": 41.0,
           "party": "Economic Freedom Fighters",
           "total": 830,
-          "femaleRatio": 0.5
+          "femaleRatio": 0.5,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 412,
@@ -3516,7 +4691,10 @@
           "medianAge": 52,
           "party": "African National Congress",
           "total": 827,
-          "femaleRatio": 0.5
+          "femaleRatio": 0.5,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 481,
@@ -3524,7 +4702,10 @@
           "medianAge": 42.0,
           "party": "Good",
           "total": 760,
-          "femaleRatio": 0.37
+          "femaleRatio": 0.37,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 378,
@@ -3532,7 +4713,10 @@
           "medianAge": 49,
           "party": "African Christian Democratic Party",
           "total": 613,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 223,
@@ -3540,7 +4724,10 @@
           "medianAge": 38,
           "party": "International Revelation Congress",
           "total": 539,
-          "femaleRatio": 0.59
+          "femaleRatio": 0.59,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 295,
@@ -3548,7 +4735,10 @@
           "medianAge": 41,
           "party": "African Content Movement",
           "total": 479,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 280,
@@ -3556,7 +4746,10 @@
           "medianAge": 52.5,
           "party": "Congress  Of The People",
           "total": 452,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 306,
@@ -3564,7 +4757,10 @@
           "medianAge": 53.0,
           "party": "Vryheidsfront Plus",
           "total": 444,
-          "femaleRatio": 0.31
+          "femaleRatio": 0.31,
+          "top10Male": 9,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.1
       },
       {
           "male": 287,
@@ -3572,7 +4768,10 @@
           "medianAge": 49.0,
           "party": "Azanian People's Organisation",
           "total": 426,
-          "femaleRatio": 0.33
+          "femaleRatio": 0.33,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 252,
@@ -3580,7 +4779,10 @@
           "medianAge": 42.0,
           "party": "United Democratic Movement",
           "total": 404,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 294,
@@ -3588,7 +4790,10 @@
           "medianAge": 46,
           "party": "Pan Africanist Congress Of Azania",
           "total": 403,
-          "femaleRatio": 0.27
+          "femaleRatio": 0.27,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 3,
@@ -3596,7 +4801,10 @@
           "medianAge": 42,
           "party": "Women Forward",
           "total": 349,
-          "femaleRatio": 0.99
+          "femaleRatio": 0.99,
+          "top10Male": 0,
+          "top10Female": 10,
+          "top10FemaleRatio": 1.0
       },
       {
           "male": 205,
@@ -3604,7 +4812,10 @@
           "medianAge": 41.5,
           "party": "Socialist Revolutionary Workers Party",
           "total": 308,
-          "femaleRatio": 0.33
+          "femaleRatio": 0.33,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 167,
@@ -3612,7 +4823,10 @@
           "medianAge": 48.0,
           "party": "National Freedom Party",
           "total": 292,
-          "femaleRatio": 0.43
+          "femaleRatio": 0.43,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 196,
@@ -3620,7 +4834,10 @@
           "medianAge": 38,
           "party": "African Democratic Change",
           "total": 291,
-          "femaleRatio": 0.33
+          "femaleRatio": 0.33,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 164,
@@ -3628,7 +4845,10 @@
           "medianAge": 47.0,
           "party": "African Covenant",
           "total": 278,
-          "femaleRatio": 0.41
+          "femaleRatio": 0.41,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 175,
@@ -3636,7 +4856,10 @@
           "medianAge": 49.0,
           "party": "Alliance For Transformation For All",
           "total": 274,
-          "femaleRatio": 0.36
+          "femaleRatio": 0.36,
+          "top10Male": 9,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.1
       },
       {
           "male": 161,
@@ -3644,7 +4867,10 @@
           "medianAge": 41,
           "party": "Christian Political Movement",
           "total": 261,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 9,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.1
       },
       {
           "male": 61,
@@ -3652,7 +4878,10 @@
           "medianAge": 34,
           "party": "Agang South Africa",
           "total": 229,
-          "femaleRatio": 0.73
+          "femaleRatio": 0.73,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 136,
@@ -3660,7 +4889,10 @@
           "medianAge": 37,
           "party": "Black First Land First",
           "total": 229,
-          "femaleRatio": 0.41
+          "femaleRatio": 0.41,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 131,
@@ -3668,7 +4900,10 @@
           "medianAge": 42,
           "party": "African Independent Congress",
           "total": 227,
-          "femaleRatio": 0.42
+          "femaleRatio": 0.42,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 113,
@@ -3676,7 +4911,10 @@
           "medianAge": 40,
           "party": "Power Of Africans Unity",
           "total": 215,
-          "femaleRatio": 0.47
+          "femaleRatio": 0.47,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 131,
@@ -3684,7 +4922,10 @@
           "medianAge": 41.0,
           "party": "Forum 4 Service Delivery",
           "total": 212,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 121,
@@ -3692,7 +4933,10 @@
           "medianAge": 45.0,
           "party": "Inkatha Freedom Party",
           "total": 210,
-          "femaleRatio": 0.42
+          "femaleRatio": 0.42,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 100,
@@ -3700,7 +4944,10 @@
           "medianAge": 39.0,
           "party": "South African National Congress Of Traditional Authorities",
           "total": 170,
-          "femaleRatio": 0.41
+          "femaleRatio": 0.41,
+          "top10Male": 9,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.1
       },
       {
           "male": 87,
@@ -3708,7 +4955,10 @@
           "medianAge": 39,
           "party": "National Peoples Ambassadors",
           "total": 165,
-          "femaleRatio": 0.47
+          "femaleRatio": 0.47,
+          "top10Male": 4,
+          "top10Female": 6,
+          "top10FemaleRatio": 0.6
       },
       {
           "male": 92,
@@ -3716,7 +4966,10 @@
           "medianAge": 44,
           "party": "Economic Emancipation Forum",
           "total": 147,
-          "femaleRatio": 0.37
+          "femaleRatio": 0.37,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 76,
@@ -3724,7 +4977,10 @@
           "medianAge": 43,
           "party": "Better Residents Association",
           "total": 137,
-          "femaleRatio": 0.45
+          "femaleRatio": 0.45,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 74,
@@ -3732,7 +4988,10 @@
           "medianAge": 37,
           "party": "Land Party",
           "total": 137,
-          "femaleRatio": 0.46
+          "femaleRatio": 0.46,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 66,
@@ -3740,7 +4999,10 @@
           "medianAge": 45,
           "party": "National People's Front",
           "total": 103,
-          "femaleRatio": 0.36
+          "femaleRatio": 0.36,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 55,
@@ -3748,7 +5010,10 @@
           "medianAge": 36,
           "party": "Afrikan Alliance Of Social Democrats",
           "total": 101,
-          "femaleRatio": 0.46
+          "femaleRatio": 0.46,
+          "top10Male": 9,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.1
       },
       {
           "male": 63,
@@ -3756,7 +5021,10 @@
           "medianAge": 53.0,
           "party": "African Renaissance Unity",
           "total": 96,
-          "femaleRatio": 0.34
+          "femaleRatio": 0.34,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 41,
@@ -3764,7 +5032,10 @@
           "medianAge": 43.0,
           "party": "People's Revolutionary Movement",
           "total": 96,
-          "femaleRatio": 0.57
+          "femaleRatio": 0.57,
+          "top10Male": 3,
+          "top10Female": 7,
+          "top10FemaleRatio": 0.7
       },
       {
           "male": 52,
@@ -3772,7 +5043,10 @@
           "medianAge": 42.0,
           "party": "African Congress Of Democrats",
           "total": 92,
-          "femaleRatio": 0.43
+          "femaleRatio": 0.43,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 34,
@@ -3780,7 +5054,10 @@
           "medianAge": 38,
           "party": "Free Democrats",
           "total": 85,
-          "femaleRatio": 0.6
+          "femaleRatio": 0.6,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 50,
@@ -3788,7 +5065,10 @@
           "medianAge": 55.0,
           "party": "Al Jama-Ah",
           "total": 84,
-          "femaleRatio": 0.4
+          "femaleRatio": 0.4,
+          "top10Male": 9,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.1
       },
       {
           "male": 38,
@@ -3796,7 +5076,10 @@
           "medianAge": 50.0,
           "party": "Compatriots Of South Africa",
           "total": 70,
-          "femaleRatio": 0.46
+          "femaleRatio": 0.46,
+          "top10Male": 9,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.1
       },
       {
           "male": 33,
@@ -3804,7 +5087,10 @@
           "medianAge": 40.0,
           "party": "Patriotic Alliance",
           "total": 56,
-          "femaleRatio": 0.41
+          "femaleRatio": 0.41,
+          "top10Male": 1,
+          "top10Female": 9,
+          "top10FemaleRatio": 0.9
       },
       {
           "male": 7,
@@ -3812,7 +5098,10 @@
           "medianAge": 44.0,
           "party": "South African Maintanance And Estate Beneficiaries Association",
           "total": 56,
-          "femaleRatio": 0.88
+          "femaleRatio": 0.88,
+          "top10Male": 0,
+          "top10Female": 10,
+          "top10FemaleRatio": 1.0
       },
       {
           "male": 25,
@@ -3820,7 +5109,10 @@
           "medianAge": 47.5,
           "party": "Minority Front",
           "total": 54,
-          "femaleRatio": 0.54
+          "femaleRatio": 0.54,
+          "top10Male": 0,
+          "top10Female": 10,
+          "top10FemaleRatio": 1.0
       },
       {
           "male": 19,
@@ -3828,7 +5120,10 @@
           "medianAge": 48.5,
           "party": "African People's Socialist Party",
           "total": 46,
-          "femaleRatio": 0.59
+          "femaleRatio": 0.59,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 24,
@@ -3836,7 +5131,10 @@
           "medianAge": 43.5,
           "party": "Gaza Movement For Change",
           "total": 46,
-          "femaleRatio": 0.48
+          "femaleRatio": 0.48,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 27,
@@ -3844,7 +5142,10 @@
           "medianAge": 52,
           "party": "Independent Civic Organisation Of South Africa",
           "total": 45,
-          "femaleRatio": 0.4
+          "femaleRatio": 0.4,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 26,
@@ -3852,7 +5153,10 @@
           "medianAge": 52,
           "party": "Cape Party/ Kaapse Party",
           "total": 39,
-          "femaleRatio": 0.33
+          "femaleRatio": 0.33,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 12,
@@ -3860,7 +5164,10 @@
           "medianAge": 43,
           "party": "People's Republic Of South Africa",
           "total": 37,
-          "femaleRatio": 0.68
+          "femaleRatio": 0.68,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 21,
@@ -3868,7 +5175,10 @@
           "medianAge": 52,
           "party": "Democratic Liberal Congress",
           "total": 35,
-          "femaleRatio": 0.4
+          "femaleRatio": 0.4,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 20,
@@ -3876,7 +5186,10 @@
           "medianAge": 47,
           "party": "Plaaslike Besorgde Inwoners",
           "total": 35,
-          "femaleRatio": 0.43
+          "femaleRatio": 0.43,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 17,
@@ -3884,7 +5197,10 @@
           "medianAge": 56,
           "party": "United Christian Democratic Party",
           "total": 31,
-          "femaleRatio": 0.45
+          "femaleRatio": 0.45,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 18,
@@ -3892,7 +5208,10 @@
           "medianAge": 49,
           "party": "African Progressive Movement",
           "total": 31,
-          "femaleRatio": 0.42
+          "femaleRatio": 0.42,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 14,
@@ -3900,7 +5219,10 @@
           "medianAge": 45.0,
           "party": "Residence Association Of South Africa",
           "total": 30,
-          "femaleRatio": 0.53
+          "femaleRatio": 0.53,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 20,
@@ -3908,7 +5230,10 @@
           "medianAge": 44,
           "party": "South African Political Party",
           "total": 29,
-          "femaleRatio": 0.31
+          "femaleRatio": 0.31,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 11,
@@ -3916,7 +5241,10 @@
           "medianAge": 34,
           "party": "African Change Academy",
           "total": 27,
-          "femaleRatio": 0.59
+          "femaleRatio": 0.59,
+          "top10Male": 4,
+          "top10Female": 6,
+          "top10FemaleRatio": 0.6
       },
       {
           "male": 18,
@@ -3924,7 +5252,10 @@
           "medianAge": 44,
           "party": "Sindawonye Progressive Party",
           "total": 27,
-          "femaleRatio": 0.33
+          "femaleRatio": 0.33,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 18,
@@ -3932,7 +5263,10 @@
           "medianAge": 46,
           "party": "Front Nasionaal/Front National",
           "total": 25,
-          "femaleRatio": 0.28
+          "femaleRatio": 0.28,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 22,
@@ -3940,7 +5274,10 @@
           "medianAge": 46,
           "party": "Capitalist Party Of South Africa",
           "total": 23,
-          "femaleRatio": 0.04
+          "femaleRatio": 0.04,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 15,
@@ -3948,7 +5285,10 @@
           "medianAge": 38,
           "party": "African Security Congress",
           "total": 19,
-          "femaleRatio": 0.21
+          "femaleRatio": 0.21,
+          "top10Male": 10,
+          "top10Female": 0,
+          "top10FemaleRatio": 0.0
       },
       {
           "male": 9,
@@ -3956,7 +5296,10 @@
           "medianAge": 49.5,
           "party": "Ximoko Party",
           "total": 18,
-          "femaleRatio": 0.5
+          "femaleRatio": 0.5,
+          "top10Male": 5,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 7,
@@ -3964,7 +5307,10 @@
           "medianAge": 35,
           "party": "South African Concerned Residents Organisation 4 Service Del",
           "total": 17,
-          "femaleRatio": 0.59
+          "femaleRatio": 0.59,
+          "top10Male": 4,
+          "top10Female": 6,
+          "top10FemaleRatio": 0.6
       },
       {
           "male": 12,
@@ -3972,7 +5318,10 @@
           "medianAge": 48,
           "party": "Gazankulu Liberation Congress",
           "total": 15,
-          "femaleRatio": 0.2
+          "femaleRatio": 0.2,
+          "top10Male": 8,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.2
       },
       {
           "male": 7,
@@ -3980,7 +5329,10 @@
           "medianAge": 43.0,
           "party": "Zenzeleni Progressive Movement",
           "total": 14,
-          "femaleRatio": 0.5
+          "femaleRatio": 0.5,
+          "top10Male": 4,
+          "top10Female": 6,
+          "top10FemaleRatio": 0.6
       },
       {
           "male": 10,
@@ -3988,7 +5340,10 @@
           "medianAge": 51.5,
           "party": "Khoisan Revolution",
           "total": 14,
-          "femaleRatio": 0.29
+          "femaleRatio": 0.29,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 9,
@@ -3996,7 +5351,10 @@
           "medianAge": 49,
           "party": "Aboriginal Khoisan",
           "total": 13,
-          "femaleRatio": 0.31
+          "femaleRatio": 0.31,
+          "top10Male": 7,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.3
       },
       {
           "male": 8,
@@ -4004,7 +5362,10 @@
           "medianAge": 46.0,
           "party": "Magoshi Swaranang Movement",
           "total": 12,
-          "femaleRatio": 0.33
+          "femaleRatio": 0.33,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 6,
@@ -4012,7 +5373,10 @@
           "medianAge": 53.0,
           "party": "Reikemetse Dikgabo Party",
           "total": 12,
-          "femaleRatio": 0.5
+          "femaleRatio": 0.5,
+          "top10Male": 6,
+          "top10Female": 4,
+          "top10FemaleRatio": 0.4
       },
       {
           "male": 3,
@@ -4020,7 +5384,10 @@
           "medianAge": 38,
           "party": "Justice And Employment Party",
           "total": 11,
-          "femaleRatio": 0.73
+          "femaleRatio": 0.73,
+          "top10Male": 3,
+          "top10Female": 7,
+          "top10FemaleRatio": 0.7
       },
       {
           "male": 3,
@@ -4028,7 +5395,10 @@
           "medianAge": 47,
           "party": "The Green Party Of South Africa",
           "total": 11,
-          "femaleRatio": 0.73
+          "femaleRatio": 0.73,
+          "top10Male": 3,
+          "top10Female": 7,
+          "top10FemaleRatio": 0.7
       },
       {
           "male": 4,
@@ -4036,7 +5406,10 @@
           "medianAge": 46.5,
           "party": "Uniting People First",
           "total": 10,
-          "femaleRatio": 0.6
+          "femaleRatio": 0.6,
+          "top10Male": 4,
+          "top10Female": 6,
+          "top10FemaleRatio": 0.6
       },
       {
           "male": 4,
@@ -4044,7 +5417,10 @@
           "medianAge": 36.0,
           "party": "New South Africa Party",
           "total": 10,
-          "femaleRatio": 0.6
+          "femaleRatio": 0.6,
+          "top10Male": 4,
+          "top10Female": 6,
+          "top10FemaleRatio": 0.6
       },
       {
           "male": 7,
@@ -4052,7 +5428,10 @@
           "medianAge": 38,
           "party": "Civic Warriors Of Maruleng",
           "total": 9,
-          "femaleRatio": 0.22
+          "femaleRatio": 0.22,
+          "top10Male": 7,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.22
       },
       {
           "male": 4,
@@ -4060,7 +5439,10 @@
           "medianAge": 36,
           "party": "All Things Are Possible",
           "total": 9,
-          "femaleRatio": 0.56
+          "femaleRatio": 0.56,
+          "top10Male": 4,
+          "top10Female": 5,
+          "top10FemaleRatio": 0.56
       },
       {
           "male": 5,
@@ -4068,7 +5450,10 @@
           "medianAge": 51.0,
           "party": "National Religious Freedom Party",
           "total": 8,
-          "femaleRatio": 0.38
+          "femaleRatio": 0.38,
+          "top10Male": 5,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.38
       },
       {
           "male": 7,
@@ -4076,7 +5461,10 @@
           "medianAge": 49.5,
           "party": "Karoo Democratic Force",
           "total": 8,
-          "femaleRatio": 0.12
+          "femaleRatio": 0.12,
+          "top10Male": 7,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.12
       },
       {
           "male": 3,
@@ -4084,7 +5472,10 @@
           "medianAge": 37.5,
           "party": "African Mantungwa Community",
           "total": 6,
-          "femaleRatio": 0.5
+          "femaleRatio": 0.5,
+          "top10Male": 3,
+          "top10Female": 3,
+          "top10FemaleRatio": 0.5
       },
       {
           "male": 5,
@@ -4092,7 +5483,10 @@
           "medianAge": 47.0,
           "party": "Bolsheviks Party Of South Africa",
           "total": 6,
-          "femaleRatio": 0.17
+          "femaleRatio": 0.17,
+          "top10Male": 5,
+          "top10Female": 1,
+          "top10FemaleRatio": 0.17
       },
       {
           "male": 3,
@@ -4100,9 +5494,13 @@
           "medianAge": 34,
           "party": "Dienslewerings Party",
           "total": 5,
-          "femaleRatio": 0.4
+          "femaleRatio": 0.4,
+          "top10Male": 3,
+          "top10Female": 2,
+          "top10FemaleRatio": 0.4
       }
   ];
+
 
   var margin = {top: 19.5, right: 19.5, bottom: 80.5, left: 70},
       width = 960 - margin.right,
@@ -4152,6 +5550,13 @@
         .attr("r", function(d) { return radiusScale(d.total); });
   };
 
+  var position10 = function(dot) {
+      dot
+        .attr("cx", function(d) { return xScale(d.medianAge); })
+        .attr("cy", function(d) { return yScale(d.top10FemaleRatio); })
+        .attr("r", function(d) { return radiusScale(d.total); });
+  };
+
   var tooltip = container.append("div")
       .attr("id", "tooltip");
   tooltip.append("p").attr("class", "party-name");
@@ -4159,11 +5564,15 @@
   tooltip.append("p").attr("class", "women");
   tooltip.append("p").attr("class", "men");
   tooltip.append("p").attr("class", "median-age");
+  tooltip.append("p").attr("class", "women-top10");
+  tooltip.append("p").attr("class", "men-top10");
 
   svg.selectAll("circle").data(parties).enter()
       .append("circle")
           .classed("dot", true)
           .style("fill", function(d, idx) {
+              if (d.party in party_colors)
+                  return party_colors[d.party]
               return colorScale[idx % 20]
           })
           .call(position)
@@ -4179,6 +5588,8 @@
               tooltip.select(".men").text("Men: " + el.male);
               tooltip.select(".women").text("Women: " + el.female);
               tooltip.select(".median-age").text("Median Age: " + el.medianAge + " years");
+              tooltip.select(".women-top10").text("Women in the top 10 places: " + el.top10Female);
+              tooltip.select(".men-top10").text("Men in the top 10 places: " + el.top10Male);
           })
           .on("mouseout", function() {
               select("#tooltip").style("display", "none");
@@ -4283,5 +5694,17 @@
   .attr("transform", "translate(" + xScale((minAge + maxAge) / 2) + "," + yScale(0.9) + ")")
   .attr("text-anchor", "middle")
   .classed("heading", true);
+
+  container.append("button")
+      .text("Top 10 Candidates")
+      .on("click", function() {
+          selectAll(".dot").transition().duration(750).call(position10);
+      });
+
+  container.append("button")
+      .text("All Candidates")
+      .on("click", function() {
+          selectAll(".dot").transition().duration(750).call(position);
+      });
 
 }());

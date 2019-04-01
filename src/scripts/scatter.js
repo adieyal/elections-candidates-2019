@@ -7,7 +7,10 @@ var parties = [
         "medianAge": 43.0,
         "party": "Democratic Alliance",
         "total": 1030,
-        "femaleRatio": 0.4
+        "femaleRatio": 0.4,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 604,
@@ -15,7 +18,10 @@ var parties = [
         "medianAge": 43,
         "party": "African Transformation Movement",
         "total": 975,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 384,
@@ -23,7 +29,10 @@ var parties = [
         "medianAge": 43,
         "party": "African People's Convention",
         "total": 841,
-        "femaleRatio": 0.54
+        "femaleRatio": 0.54,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 418,
@@ -31,7 +40,10 @@ var parties = [
         "medianAge": 41.0,
         "party": "Economic Freedom Fighters",
         "total": 830,
-        "femaleRatio": 0.5
+        "femaleRatio": 0.5,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 412,
@@ -39,7 +51,10 @@ var parties = [
         "medianAge": 52,
         "party": "African National Congress",
         "total": 827,
-        "femaleRatio": 0.5
+        "femaleRatio": 0.5,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 481,
@@ -47,7 +62,10 @@ var parties = [
         "medianAge": 42.0,
         "party": "Good",
         "total": 760,
-        "femaleRatio": 0.37
+        "femaleRatio": 0.37,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 378,
@@ -55,7 +73,10 @@ var parties = [
         "medianAge": 49,
         "party": "African Christian Democratic Party",
         "total": 613,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 223,
@@ -63,7 +84,10 @@ var parties = [
         "medianAge": 38,
         "party": "International Revelation Congress",
         "total": 539,
-        "femaleRatio": 0.59
+        "femaleRatio": 0.59,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 295,
@@ -71,7 +95,10 @@ var parties = [
         "medianAge": 41,
         "party": "African Content Movement",
         "total": 479,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 280,
@@ -79,7 +106,10 @@ var parties = [
         "medianAge": 52.5,
         "party": "Congress  Of The People",
         "total": 452,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 306,
@@ -87,7 +117,10 @@ var parties = [
         "medianAge": 53.0,
         "party": "Vryheidsfront Plus",
         "total": 444,
-        "femaleRatio": 0.31
+        "femaleRatio": 0.31,
+        "top10Male": 9,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.1
     },
     {
         "male": 287,
@@ -95,7 +128,10 @@ var parties = [
         "medianAge": 49.0,
         "party": "Azanian People's Organisation",
         "total": 426,
-        "femaleRatio": 0.33
+        "femaleRatio": 0.33,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 252,
@@ -103,7 +139,10 @@ var parties = [
         "medianAge": 42.0,
         "party": "United Democratic Movement",
         "total": 404,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 294,
@@ -111,7 +150,10 @@ var parties = [
         "medianAge": 46,
         "party": "Pan Africanist Congress Of Azania",
         "total": 403,
-        "femaleRatio": 0.27
+        "femaleRatio": 0.27,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 3,
@@ -119,7 +161,10 @@ var parties = [
         "medianAge": 42,
         "party": "Women Forward",
         "total": 349,
-        "femaleRatio": 0.99
+        "femaleRatio": 0.99,
+        "top10Male": 0,
+        "top10Female": 10,
+        "top10FemaleRatio": 1.0
     },
     {
         "male": 205,
@@ -127,7 +172,10 @@ var parties = [
         "medianAge": 41.5,
         "party": "Socialist Revolutionary Workers Party",
         "total": 308,
-        "femaleRatio": 0.33
+        "femaleRatio": 0.33,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 167,
@@ -135,7 +183,10 @@ var parties = [
         "medianAge": 48.0,
         "party": "National Freedom Party",
         "total": 292,
-        "femaleRatio": 0.43
+        "femaleRatio": 0.43,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 196,
@@ -143,7 +194,10 @@ var parties = [
         "medianAge": 38,
         "party": "African Democratic Change",
         "total": 291,
-        "femaleRatio": 0.33
+        "femaleRatio": 0.33,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 164,
@@ -151,7 +205,10 @@ var parties = [
         "medianAge": 47.0,
         "party": "African Covenant",
         "total": 278,
-        "femaleRatio": 0.41
+        "femaleRatio": 0.41,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 175,
@@ -159,7 +216,10 @@ var parties = [
         "medianAge": 49.0,
         "party": "Alliance For Transformation For All",
         "total": 274,
-        "femaleRatio": 0.36
+        "femaleRatio": 0.36,
+        "top10Male": 9,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.1
     },
     {
         "male": 161,
@@ -167,7 +227,10 @@ var parties = [
         "medianAge": 41,
         "party": "Christian Political Movement",
         "total": 261,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 9,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.1
     },
     {
         "male": 61,
@@ -175,7 +238,10 @@ var parties = [
         "medianAge": 34,
         "party": "Agang South Africa",
         "total": 229,
-        "femaleRatio": 0.73
+        "femaleRatio": 0.73,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 136,
@@ -183,7 +249,10 @@ var parties = [
         "medianAge": 37,
         "party": "Black First Land First",
         "total": 229,
-        "femaleRatio": 0.41
+        "femaleRatio": 0.41,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 131,
@@ -191,7 +260,10 @@ var parties = [
         "medianAge": 42,
         "party": "African Independent Congress",
         "total": 227,
-        "femaleRatio": 0.42
+        "femaleRatio": 0.42,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 113,
@@ -199,7 +271,10 @@ var parties = [
         "medianAge": 40,
         "party": "Power Of Africans Unity",
         "total": 215,
-        "femaleRatio": 0.47
+        "femaleRatio": 0.47,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 131,
@@ -207,7 +282,10 @@ var parties = [
         "medianAge": 41.0,
         "party": "Forum 4 Service Delivery",
         "total": 212,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 121,
@@ -215,7 +293,10 @@ var parties = [
         "medianAge": 45.0,
         "party": "Inkatha Freedom Party",
         "total": 210,
-        "femaleRatio": 0.42
+        "femaleRatio": 0.42,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 100,
@@ -223,7 +304,10 @@ var parties = [
         "medianAge": 39.0,
         "party": "South African National Congress Of Traditional Authorities",
         "total": 170,
-        "femaleRatio": 0.41
+        "femaleRatio": 0.41,
+        "top10Male": 9,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.1
     },
     {
         "male": 87,
@@ -231,7 +315,10 @@ var parties = [
         "medianAge": 39,
         "party": "National Peoples Ambassadors",
         "total": 165,
-        "femaleRatio": 0.47
+        "femaleRatio": 0.47,
+        "top10Male": 4,
+        "top10Female": 6,
+        "top10FemaleRatio": 0.6
     },
     {
         "male": 92,
@@ -239,7 +326,10 @@ var parties = [
         "medianAge": 44,
         "party": "Economic Emancipation Forum",
         "total": 147,
-        "femaleRatio": 0.37
+        "femaleRatio": 0.37,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 76,
@@ -247,7 +337,10 @@ var parties = [
         "medianAge": 43,
         "party": "Better Residents Association",
         "total": 137,
-        "femaleRatio": 0.45
+        "femaleRatio": 0.45,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 74,
@@ -255,7 +348,10 @@ var parties = [
         "medianAge": 37,
         "party": "Land Party",
         "total": 137,
-        "femaleRatio": 0.46
+        "femaleRatio": 0.46,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 66,
@@ -263,7 +359,10 @@ var parties = [
         "medianAge": 45,
         "party": "National People's Front",
         "total": 103,
-        "femaleRatio": 0.36
+        "femaleRatio": 0.36,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 55,
@@ -271,7 +370,10 @@ var parties = [
         "medianAge": 36,
         "party": "Afrikan Alliance Of Social Democrats",
         "total": 101,
-        "femaleRatio": 0.46
+        "femaleRatio": 0.46,
+        "top10Male": 9,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.1
     },
     {
         "male": 63,
@@ -279,7 +381,10 @@ var parties = [
         "medianAge": 53.0,
         "party": "African Renaissance Unity",
         "total": 96,
-        "femaleRatio": 0.34
+        "femaleRatio": 0.34,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 41,
@@ -287,7 +392,10 @@ var parties = [
         "medianAge": 43.0,
         "party": "People's Revolutionary Movement",
         "total": 96,
-        "femaleRatio": 0.57
+        "femaleRatio": 0.57,
+        "top10Male": 3,
+        "top10Female": 7,
+        "top10FemaleRatio": 0.7
     },
     {
         "male": 52,
@@ -295,7 +403,10 @@ var parties = [
         "medianAge": 42.0,
         "party": "African Congress Of Democrats",
         "total": 92,
-        "femaleRatio": 0.43
+        "femaleRatio": 0.43,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 34,
@@ -303,7 +414,10 @@ var parties = [
         "medianAge": 38,
         "party": "Free Democrats",
         "total": 85,
-        "femaleRatio": 0.6
+        "femaleRatio": 0.6,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 50,
@@ -311,7 +425,10 @@ var parties = [
         "medianAge": 55.0,
         "party": "Al Jama-Ah",
         "total": 84,
-        "femaleRatio": 0.4
+        "femaleRatio": 0.4,
+        "top10Male": 9,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.1
     },
     {
         "male": 38,
@@ -319,7 +436,10 @@ var parties = [
         "medianAge": 50.0,
         "party": "Compatriots Of South Africa",
         "total": 70,
-        "femaleRatio": 0.46
+        "femaleRatio": 0.46,
+        "top10Male": 9,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.1
     },
     {
         "male": 33,
@@ -327,7 +447,10 @@ var parties = [
         "medianAge": 40.0,
         "party": "Patriotic Alliance",
         "total": 56,
-        "femaleRatio": 0.41
+        "femaleRatio": 0.41,
+        "top10Male": 1,
+        "top10Female": 9,
+        "top10FemaleRatio": 0.9
     },
     {
         "male": 7,
@@ -335,7 +458,10 @@ var parties = [
         "medianAge": 44.0,
         "party": "South African Maintanance And Estate Beneficiaries Association",
         "total": 56,
-        "femaleRatio": 0.88
+        "femaleRatio": 0.88,
+        "top10Male": 0,
+        "top10Female": 10,
+        "top10FemaleRatio": 1.0
     },
     {
         "male": 25,
@@ -343,7 +469,10 @@ var parties = [
         "medianAge": 47.5,
         "party": "Minority Front",
         "total": 54,
-        "femaleRatio": 0.54
+        "femaleRatio": 0.54,
+        "top10Male": 0,
+        "top10Female": 10,
+        "top10FemaleRatio": 1.0
     },
     {
         "male": 19,
@@ -351,7 +480,10 @@ var parties = [
         "medianAge": 48.5,
         "party": "African People's Socialist Party",
         "total": 46,
-        "femaleRatio": 0.59
+        "femaleRatio": 0.59,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 24,
@@ -359,7 +491,10 @@ var parties = [
         "medianAge": 43.5,
         "party": "Gaza Movement For Change",
         "total": 46,
-        "femaleRatio": 0.48
+        "femaleRatio": 0.48,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 27,
@@ -367,7 +502,10 @@ var parties = [
         "medianAge": 52,
         "party": "Independent Civic Organisation Of South Africa",
         "total": 45,
-        "femaleRatio": 0.4
+        "femaleRatio": 0.4,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 26,
@@ -375,7 +513,10 @@ var parties = [
         "medianAge": 52,
         "party": "Cape Party/ Kaapse Party",
         "total": 39,
-        "femaleRatio": 0.33
+        "femaleRatio": 0.33,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 12,
@@ -383,7 +524,10 @@ var parties = [
         "medianAge": 43,
         "party": "People's Republic Of South Africa",
         "total": 37,
-        "femaleRatio": 0.68
+        "femaleRatio": 0.68,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 21,
@@ -391,7 +535,10 @@ var parties = [
         "medianAge": 52,
         "party": "Democratic Liberal Congress",
         "total": 35,
-        "femaleRatio": 0.4
+        "femaleRatio": 0.4,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 20,
@@ -399,7 +546,10 @@ var parties = [
         "medianAge": 47,
         "party": "Plaaslike Besorgde Inwoners",
         "total": 35,
-        "femaleRatio": 0.43
+        "femaleRatio": 0.43,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 17,
@@ -407,7 +557,10 @@ var parties = [
         "medianAge": 56,
         "party": "United Christian Democratic Party",
         "total": 31,
-        "femaleRatio": 0.45
+        "femaleRatio": 0.45,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 18,
@@ -415,7 +568,10 @@ var parties = [
         "medianAge": 49,
         "party": "African Progressive Movement",
         "total": 31,
-        "femaleRatio": 0.42
+        "femaleRatio": 0.42,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 14,
@@ -423,7 +579,10 @@ var parties = [
         "medianAge": 45.0,
         "party": "Residence Association Of South Africa",
         "total": 30,
-        "femaleRatio": 0.53
+        "femaleRatio": 0.53,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 20,
@@ -431,7 +590,10 @@ var parties = [
         "medianAge": 44,
         "party": "South African Political Party",
         "total": 29,
-        "femaleRatio": 0.31
+        "femaleRatio": 0.31,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 11,
@@ -439,7 +601,10 @@ var parties = [
         "medianAge": 34,
         "party": "African Change Academy",
         "total": 27,
-        "femaleRatio": 0.59
+        "femaleRatio": 0.59,
+        "top10Male": 4,
+        "top10Female": 6,
+        "top10FemaleRatio": 0.6
     },
     {
         "male": 18,
@@ -447,7 +612,10 @@ var parties = [
         "medianAge": 44,
         "party": "Sindawonye Progressive Party",
         "total": 27,
-        "femaleRatio": 0.33
+        "femaleRatio": 0.33,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 18,
@@ -455,7 +623,10 @@ var parties = [
         "medianAge": 46,
         "party": "Front Nasionaal/Front National",
         "total": 25,
-        "femaleRatio": 0.28
+        "femaleRatio": 0.28,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 22,
@@ -463,7 +634,10 @@ var parties = [
         "medianAge": 46,
         "party": "Capitalist Party Of South Africa",
         "total": 23,
-        "femaleRatio": 0.04
+        "femaleRatio": 0.04,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 15,
@@ -471,7 +645,10 @@ var parties = [
         "medianAge": 38,
         "party": "African Security Congress",
         "total": 19,
-        "femaleRatio": 0.21
+        "femaleRatio": 0.21,
+        "top10Male": 10,
+        "top10Female": 0,
+        "top10FemaleRatio": 0.0
     },
     {
         "male": 9,
@@ -479,7 +656,10 @@ var parties = [
         "medianAge": 49.5,
         "party": "Ximoko Party",
         "total": 18,
-        "femaleRatio": 0.5
+        "femaleRatio": 0.5,
+        "top10Male": 5,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 7,
@@ -487,7 +667,10 @@ var parties = [
         "medianAge": 35,
         "party": "South African Concerned Residents Organisation 4 Service Del",
         "total": 17,
-        "femaleRatio": 0.59
+        "femaleRatio": 0.59,
+        "top10Male": 4,
+        "top10Female": 6,
+        "top10FemaleRatio": 0.6
     },
     {
         "male": 12,
@@ -495,7 +678,10 @@ var parties = [
         "medianAge": 48,
         "party": "Gazankulu Liberation Congress",
         "total": 15,
-        "femaleRatio": 0.2
+        "femaleRatio": 0.2,
+        "top10Male": 8,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.2
     },
     {
         "male": 7,
@@ -503,7 +689,10 @@ var parties = [
         "medianAge": 43.0,
         "party": "Zenzeleni Progressive Movement",
         "total": 14,
-        "femaleRatio": 0.5
+        "femaleRatio": 0.5,
+        "top10Male": 4,
+        "top10Female": 6,
+        "top10FemaleRatio": 0.6
     },
     {
         "male": 10,
@@ -511,7 +700,10 @@ var parties = [
         "medianAge": 51.5,
         "party": "Khoisan Revolution",
         "total": 14,
-        "femaleRatio": 0.29
+        "femaleRatio": 0.29,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 9,
@@ -519,7 +711,10 @@ var parties = [
         "medianAge": 49,
         "party": "Aboriginal Khoisan",
         "total": 13,
-        "femaleRatio": 0.31
+        "femaleRatio": 0.31,
+        "top10Male": 7,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.3
     },
     {
         "male": 8,
@@ -527,7 +722,10 @@ var parties = [
         "medianAge": 46.0,
         "party": "Magoshi Swaranang Movement",
         "total": 12,
-        "femaleRatio": 0.33
+        "femaleRatio": 0.33,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 6,
@@ -535,7 +733,10 @@ var parties = [
         "medianAge": 53.0,
         "party": "Reikemetse Dikgabo Party",
         "total": 12,
-        "femaleRatio": 0.5
+        "femaleRatio": 0.5,
+        "top10Male": 6,
+        "top10Female": 4,
+        "top10FemaleRatio": 0.4
     },
     {
         "male": 3,
@@ -543,7 +744,10 @@ var parties = [
         "medianAge": 38,
         "party": "Justice And Employment Party",
         "total": 11,
-        "femaleRatio": 0.73
+        "femaleRatio": 0.73,
+        "top10Male": 3,
+        "top10Female": 7,
+        "top10FemaleRatio": 0.7
     },
     {
         "male": 3,
@@ -551,7 +755,10 @@ var parties = [
         "medianAge": 47,
         "party": "The Green Party Of South Africa",
         "total": 11,
-        "femaleRatio": 0.73
+        "femaleRatio": 0.73,
+        "top10Male": 3,
+        "top10Female": 7,
+        "top10FemaleRatio": 0.7
     },
     {
         "male": 4,
@@ -559,7 +766,10 @@ var parties = [
         "medianAge": 46.5,
         "party": "Uniting People First",
         "total": 10,
-        "femaleRatio": 0.6
+        "femaleRatio": 0.6,
+        "top10Male": 4,
+        "top10Female": 6,
+        "top10FemaleRatio": 0.6
     },
     {
         "male": 4,
@@ -567,7 +777,10 @@ var parties = [
         "medianAge": 36.0,
         "party": "New South Africa Party",
         "total": 10,
-        "femaleRatio": 0.6
+        "femaleRatio": 0.6,
+        "top10Male": 4,
+        "top10Female": 6,
+        "top10FemaleRatio": 0.6
     },
     {
         "male": 7,
@@ -575,7 +788,10 @@ var parties = [
         "medianAge": 38,
         "party": "Civic Warriors Of Maruleng",
         "total": 9,
-        "femaleRatio": 0.22
+        "femaleRatio": 0.22,
+        "top10Male": 7,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.22
     },
     {
         "male": 4,
@@ -583,7 +799,10 @@ var parties = [
         "medianAge": 36,
         "party": "All Things Are Possible",
         "total": 9,
-        "femaleRatio": 0.56
+        "femaleRatio": 0.56,
+        "top10Male": 4,
+        "top10Female": 5,
+        "top10FemaleRatio": 0.56
     },
     {
         "male": 5,
@@ -591,7 +810,10 @@ var parties = [
         "medianAge": 51.0,
         "party": "National Religious Freedom Party",
         "total": 8,
-        "femaleRatio": 0.38
+        "femaleRatio": 0.38,
+        "top10Male": 5,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.38
     },
     {
         "male": 7,
@@ -599,7 +821,10 @@ var parties = [
         "medianAge": 49.5,
         "party": "Karoo Democratic Force",
         "total": 8,
-        "femaleRatio": 0.12
+        "femaleRatio": 0.12,
+        "top10Male": 7,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.12
     },
     {
         "male": 3,
@@ -607,7 +832,10 @@ var parties = [
         "medianAge": 37.5,
         "party": "African Mantungwa Community",
         "total": 6,
-        "femaleRatio": 0.5
+        "femaleRatio": 0.5,
+        "top10Male": 3,
+        "top10Female": 3,
+        "top10FemaleRatio": 0.5
     },
     {
         "male": 5,
@@ -615,7 +843,10 @@ var parties = [
         "medianAge": 47.0,
         "party": "Bolsheviks Party Of South Africa",
         "total": 6,
-        "femaleRatio": 0.17
+        "femaleRatio": 0.17,
+        "top10Male": 5,
+        "top10Female": 1,
+        "top10FemaleRatio": 0.17
     },
     {
         "male": 3,
@@ -623,9 +854,13 @@ var parties = [
         "medianAge": 34,
         "party": "Dienslewerings Party",
         "total": 5,
-        "femaleRatio": 0.4
+        "femaleRatio": 0.4,
+        "top10Male": 3,
+        "top10Female": 2,
+        "top10FemaleRatio": 0.4
     }
 ]
+
 
 var margin = {top: 19.5, right: 19.5, bottom: 80.5, left: 70},
     width = 960 - margin.right,
@@ -675,6 +910,13 @@ var position = function(dot) {
       .attr("r", function(d) { return radiusScale(d.total); });
 }
 
+var position10 = function(dot) {
+    dot
+      .attr("cx", function(d) { return xScale(d.medianAge); })
+      .attr("cy", function(d) { return yScale(d.top10FemaleRatio); })
+      .attr("r", function(d) { return radiusScale(d.total); });
+}
+
 var tooltip = container.append("div")
     .attr("id", "tooltip")
 tooltip.append("p").attr("class", "party-name")
@@ -682,6 +924,8 @@ tooltip.append("p").attr("class", "candidates")
 tooltip.append("p").attr("class", "women")
 tooltip.append("p").attr("class", "men")
 tooltip.append("p").attr("class", "median-age")
+tooltip.append("p").attr("class", "women-top10")
+tooltip.append("p").attr("class", "men-top10")
 
 svg.selectAll("circle").data(parties).enter()
     .append("circle")
@@ -702,6 +946,8 @@ svg.selectAll("circle").data(parties).enter()
             tooltip.select(".men").text("Men: " + el.male)
             tooltip.select(".women").text("Women: " + el.female)
             tooltip.select(".median-age").text("Median Age: " + el.medianAge + " years")
+            tooltip.select(".women-top10").text("Women in the top 10 places: " + el.top10Female)
+            tooltip.select(".men-top10").text("Men in the top 10 places: " + el.top10Male)
         })
         .on("mouseout", function() {
             d3.select("#tooltip").style("display", "none")
@@ -807,3 +1053,14 @@ svg.append("text")
 .attr("text-anchor", "middle")
 .classed("heading", true)
 
+container.append("button")
+    .text("Top 10 Candidates")
+    .on("click", function() {
+        d3.selectAll(".dot").transition().duration(750).call(position10);
+    })
+
+container.append("button")
+    .text("All Candidates")
+    .on("click", function() {
+        d3.selectAll(".dot").transition().duration(750).call(position);
+    })
