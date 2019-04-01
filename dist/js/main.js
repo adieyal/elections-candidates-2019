@@ -3276,13 +3276,13 @@
     });
   }
 
-  var category10 = colors("1f77b4ff7f0e2ca02cd627289467bd8c564be377c27f7f7fbcbd2217becf");
+  colors("1f77b4ff7f0e2ca02cd627289467bd8c564be377c27f7f7fbcbd2217becf");
 
   colors("393b795254a36b6ecf9c9ede6379398ca252b5cf6bcedb9c8c6d31bd9e39e7ba52e7cb94843c39ad494ad6616be7969c7b4173a55194ce6dbdde9ed6");
 
   colors("3182bd6baed69ecae1c6dbefe6550dfd8d3cfdae6bfdd0a231a35474c476a1d99bc7e9c0756bb19e9ac8bcbddcdadaeb636363969696bdbdbdd9d9d9");
 
-  colors("1f77b4aec7e8ff7f0effbb782ca02c98df8ad62728ff98969467bdc5b0d58c564bc49c94e377c2f7b6d27f7f7fc7c7c7bcbd22dbdb8d17becf9edae5");
+  var category20 = colors("1f77b4aec7e8ff7f0effbb782ca02c98df8ad62728ff98969467bdc5b0d58c564bc49c94e377c2f7b6d27f7f7fc7c7c7bcbd22dbdb8d17becf9edae5");
 
   cubehelixLong(cubehelix(300, 0.5, 0.0), cubehelix(-240, 0.5, 1.0));
 
@@ -4111,7 +4111,7 @@
 
   var xScale = linear$1().domain([minAge, maxAge]).range([0, width]).nice(),
       yScale = linear$1().domain([1, 0]).range([0, height]).nice(),
-      colorScale = category10,
+      colorScale = category20,
       radiusScale = linear$1().domain([0, 1000]).range([0, 40]),
       xAxis = axisBottom(xScale).ticks(12, ",d"),
       yAxis = axisLeft(yScale);
@@ -4164,7 +4164,7 @@
       .append("circle")
           .classed("dot", true)
           .style("fill", function(d, idx) {
-              return colorScale[idx % 10]
+              return colorScale[idx % 20]
           })
           .call(position)
           .on("mousemove", function() {

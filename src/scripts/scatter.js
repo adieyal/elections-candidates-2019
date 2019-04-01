@@ -634,7 +634,7 @@ var minAge = 30, maxAge = 60;
 
 var xScale = d3.scaleLinear().domain([minAge, maxAge]).range([0, width]).nice(),
     yScale = d3.scaleLinear().domain([1, 0]).range([0, height]).nice(),
-    colorScale = d3.schemeCategory10,
+    colorScale = d3.schemeCategory20,
     radiusScale = d3.scaleLinear().domain([0, 1000]).range([0, 40]),
     xAxis = d3.axisBottom(xScale).ticks(12, ",d"),
     yAxis = d3.axisLeft(yScale)
@@ -687,7 +687,7 @@ svg.selectAll("circle").data(parties).enter()
     .append("circle")
         .classed("dot", true)
         .style("fill", function(d, idx) {
-            return colorScale[idx % 10]
+            return colorScale[idx % 20]
         })
         .call(position)
         .on("mousemove", function() {
