@@ -1,5 +1,19 @@
 import * as d3 from "./d3"
 
+var party_colors = {
+    "African National Congress" : "#00993f",
+    "Democratic Alliance" : "#015ca3",
+    "Inkatha Freedom Party" : "e91c23",
+    "Economic Freedom Fighters" : "#850000",
+    "Congress  Of The People" : "#ffca08",
+    "African Christian Democratic Party" : "#005284",
+    "United Democratic Movement" : "#fdb415",
+    "Vryheidsfront Plus" : "#017f01",
+    "Agang South Africa" : "#00764b",
+    "Azanian People's Organisation" : "#622f06",
+    "Pan Africanist Congress of Azania" : "#036637",
+}
+
 var parties = [
     {
         "male": 620,
@@ -931,6 +945,8 @@ svg.selectAll("circle").data(parties).enter()
     .append("circle")
         .classed("dot", true)
         .style("fill", function(d, idx) {
+            if (d.party in party_colors)
+                return party_colors[d.party]
             return colorScale[idx % 20]
         })
         .call(position)
