@@ -68,3 +68,11 @@ text {
     stroke-width: 1px;
     fill: none;
 }
+
+#chart div.candidate-buttons {
+    text-align: center;
+}
+
+#chart div.candidate-buttons button {
+    font-size: 14px;
+}

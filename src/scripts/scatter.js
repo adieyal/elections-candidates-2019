@@ -1165,7 +1165,8 @@ svg.append("text")
 .attr("text-anchor", "middle")
 .classed("heading", true)
 
-container.append("button")
+var buttons = container.append("div").classed("candidate-buttons", true);
+buttons.append("button")
     .text("Top 10 Candidates")
     .on("click", function() {
         d3.selectAll(".dot").transition().duration(transitionDuration).call(position10).on("start", function() {
@@ -1174,7 +1175,7 @@ container.append("button")
         });
     })
 
-container.append("button")
+buttons.append("button")
     .text("All Candidates")
     .on("click", function() {
         d3.selectAll(".dot").transition().duration(transitionDuration).call(position).on("end", function() {
