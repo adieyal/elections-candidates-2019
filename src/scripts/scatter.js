@@ -997,6 +997,8 @@ var position = function(dot) {
 }
 
 var position10 = function(dot) {
+    d3.selectAll(".info-text").style("display", "none")
+    d3.selectAll(".info-line").style("display", "none")
     dot
       .attr("cx", function(d) { return xScale(d.top10MedianAge); })
       .attr("cy", function(d) { return yScale(d.top10FemaleRatio); })
@@ -1166,11 +1168,17 @@ svg.append("text")
 container.append("button")
     .text("Top 10 Candidates")
     .on("click", function() {
-        d3.selectAll(".dot").transition().duration(transitionDuration).call(position10);
+        d3.selectAll(".dot").transition().duration(transitionDuration).call(position10).on("start", function() {
+            d3.selectAll(".info-text").style("display", "none")
+            d3.selectAll(".info-line").style("display", "none")
+        });
     })
 
 container.append("button")
     .text("All Candidates")
     .on("click", function() {
-        d3.selectAll(".dot").transition().duration(transitionDuration).call(position);
+        d3.selectAll(".dot").transition().duration(transitionDuration).call(position).on("end", function() {
+            d3.selectAll(".info-text").style("display", "block")
+            d3.selectAll(".info-line").style("display", "block")
+        });
     })

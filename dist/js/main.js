@@ -5623,6 +5623,8 @@
   };
 
   var position10 = function(dot) {
+      selectAll(".info-text").style("display", "none");
+      selectAll(".info-line").style("display", "none");
       dot
         .attr("cx", function(d) { return xScale(d.top10MedianAge); })
         .attr("cy", function(d) { return yScale(d.top10FemaleRatio); })
@@ -5792,13 +5794,19 @@
   container.append("button")
       .text("Top 10 Candidates")
       .on("click", function() {
-          selectAll(".dot").transition().duration(transitionDuration).call(position10);
+          selectAll(".dot").transition().duration(transitionDuration).call(position10).on("start", function() {
+              selectAll(".info-text").style("display", "none");
+              selectAll(".info-line").style("display", "none");
+          });
       });
 
   container.append("button")
       .text("All Candidates")
       .on("click", function() {
-          selectAll(".dot").transition().duration(transitionDuration).call(position);
+          selectAll(".dot").transition().duration(transitionDuration).call(position).on("end", function() {
+              selectAll(".info-text").style("display", "block");
+              selectAll(".info-line").style("display", "block");
+          });
       });
 
 }());
