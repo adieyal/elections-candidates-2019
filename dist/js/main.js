@@ -9488,7 +9488,7 @@
   .classed("x-axis-label", true);
 
   svg.append("text")
-  .text("Political party candidates for 2019")
+  .text("Political party candidates for 2021")
   .attr("transform", "translate(" + xScale((minAge + maxAge) / 2) + "," + yScale(0.9) + ")")
   .attr("text-anchor", "middle")
   .classed("heading", true);
