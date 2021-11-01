@@ -663,11 +663,13 @@
   }
 
   function selection_cloneShallow() {
-    return this.parentNode.insertBefore(this.cloneNode(false), this.nextSibling);
+    var clone = this.cloneNode(false), parent = this.parentNode;
+    return parent ? parent.insertBefore(clone, this.nextSibling) : clone;
   }
 
   function selection_cloneDeep() {
-    return this.parentNode.insertBefore(this.cloneNode(true), this.nextSibling);
+    var clone = this.cloneNode(true), parent = this.parentNode;
+    return parent ? parent.insertBefore(clone, this.nextSibling) : clone;
   }
 
   function selection_clone(deep) {
@@ -1093,8 +1095,7 @@
   var reI = "\\s*([+-]?\\d+)\\s*",
       reN = "\\s*([+-]?\\d*\\.?\\d+(?:[eE][+-]?\\d+)?)\\s*",
       reP = "\\s*([+-]?\\d*\\.?\\d+(?:[eE][+-]?\\d+)?)%\\s*",
-      reHex3 = /^#([0-9a-f]{3})$/,
-      reHex6 = /^#([0-9a-f]{6})$/,
+      reHex = /^#([0-9a-f]{3,8})$/,
       reRgbInteger = new RegExp("^rgb\\(" + [reI, reI, reI] + "\\)$"),
       reRgbPercent = new RegExp("^rgb\\(" + [reP, reP, reP] + "\\)$"),
       reRgbaInteger = new RegExp("^rgba\\(" + [reI, reI, reI, reN] + "\\)$"),
@@ -1254,29 +1255,46 @@
   };
 
   define(Color, color, {
+    copy: function(channels) {
+      return Object.assign(new this.constructor, this, channels);
+    },
     displayable: function() {
       return this.rgb().displayable();
     },
-    hex: function() {
-      return this.rgb().hex();
-    },
-    toString: function() {
-      return this.rgb() + "";
-    }
+    hex: color_formatHex, // Deprecated! Use color.formatHex.
+    formatHex: color_formatHex,
+    formatHsl: color_formatHsl,
+    formatRgb: color_formatRgb,
+    toString: color_formatRgb
   });
 
+  function color_formatHex() {
+    return this.rgb().formatHex();
+  }
+
+  function color_formatHsl() {
+    return hslConvert(this).formatHsl();
+  }
+
+  function color_formatRgb() {
+    return this.rgb().formatRgb();
+  }
+
   function color(format) {
-    var m;
+    var m, l;
     format = (format + "").trim().toLowerCase();
-    return (m = reHex3.exec(format)) ? (m = parseInt(m[1], 16), new Rgb((m >> 8 & 0xf) | (m >> 4 & 0x0f0), (m >> 4 & 0xf) | (m & 0xf0), ((m & 0xf) << 4) | (m & 0xf), 1)) // #f00
-        : (m = reHex6.exec(format)) ? rgbn(parseInt(m[1], 16)) // #ff0000
+    return (m = reHex.exec(format)) ? (l = m[1].length, m = parseInt(m[1], 16), l === 6 ? rgbn(m) // #ff0000
+        : l === 3 ? new Rgb((m >> 8 & 0xf) | (m >> 4 & 0xf0), (m >> 4 & 0xf) | (m & 0xf0), ((m & 0xf) << 4) | (m & 0xf), 1) // #f00
+        : l === 8 ? rgba(m >> 24 & 0xff, m >> 16 & 0xff, m >> 8 & 0xff, (m & 0xff) / 0xff) // #ff000000
+        : l === 4 ? rgba((m >> 12 & 0xf) | (m >> 8 & 0xf0), (m >> 8 & 0xf) | (m >> 4 & 0xf0), (m >> 4 & 0xf) | (m & 0xf0), (((m & 0xf) << 4) | (m & 0xf)) / 0xff) // #f000
+        : null) // invalid hex
         : (m = reRgbInteger.exec(format)) ? new Rgb(m[1], m[2], m[3], 1) // rgb(255, 0, 0)
         : (m = reRgbPercent.exec(format)) ? new Rgb(m[1] * 255 / 100, m[2] * 255 / 100, m[3] * 255 / 100, 1) // rgb(100%, 0%, 0%)
         : (m = reRgbaInteger.exec(format)) ? rgba(m[1], m[2], m[3], m[4]) // rgba(255, 0, 0, 1)
         : (m = reRgbaPercent.exec(format)) ? rgba(m[1] * 255 / 100, m[2] * 255 / 100, m[3] * 255 / 100, m[4]) // rgb(100%, 0%, 0%, 1)
         : (m = reHslPercent.exec(format)) ? hsla(m[1], m[2] / 100, m[3] / 100, 1) // hsl(120, 50%, 50%)
         : (m = reHslaPercent.exec(format)) ? hsla(m[1], m[2] / 100, m[3] / 100, m[4]) // hsla(120, 50%, 50%, 1)
-        : named.hasOwnProperty(format) ? rgbn(named[format])
+        : named.hasOwnProperty(format) ? rgbn(named[format]) // eslint-disable-line no-prototype-builtins
         : format === "transparent" ? new Rgb(NaN, NaN, NaN, 0)
         : null;
   }
@@ -1321,23 +1339,29 @@
       return this;
     },
     displayable: function() {
-      return (0 <= this.r && this.r <= 255)
-          && (0 <= this.g && this.g <= 255)
-          && (0 <= this.b && this.b <= 255)
+      return (-0.5 <= this.r && this.r < 255.5)
+          && (-0.5 <= this.g && this.g < 255.5)
+          && (-0.5 <= this.b && this.b < 255.5)
           && (0 <= this.opacity && this.opacity <= 1);
     },
-    hex: function() {
-      return "#" + hex(this.r) + hex(this.g) + hex(this.b);
-    },
-    toString: function() {
-      var a = this.opacity; a = isNaN(a) ? 1 : Math.max(0, Math.min(1, a));
-      return (a === 1 ? "rgb(" : "rgba(")
-          + Math.max(0, Math.min(255, Math.round(this.r) || 0)) + ", "
-          + Math.max(0, Math.min(255, Math.round(this.g) || 0)) + ", "
-          + Math.max(0, Math.min(255, Math.round(this.b) || 0))
-          + (a === 1 ? ")" : ", " + a + ")");
-    }
+    hex: rgb_formatHex, // Deprecated! Use color.formatHex.
+    formatHex: rgb_formatHex,
+    formatRgb: rgb_formatRgb,
+    toString: rgb_formatRgb
   }));
+
+  function rgb_formatHex() {
+    return "#" + hex(this.r) + hex(this.g) + hex(this.b);
+  }
+
+  function rgb_formatRgb() {
+    var a = this.opacity; a = isNaN(a) ? 1 : Math.max(0, Math.min(1, a));
+    return (a === 1 ? "rgb(" : "rgba(")
+        + Math.max(0, Math.min(255, Math.round(this.r) || 0)) + ", "
+        + Math.max(0, Math.min(255, Math.round(this.g) || 0)) + ", "
+        + Math.max(0, Math.min(255, Math.round(this.b) || 0))
+        + (a === 1 ? ")" : ", " + a + ")");
+  }
 
   function hex(value) {
     value = Math.max(0, Math.min(255, Math.round(value) || 0));
@@ -1414,6 +1438,14 @@
       return (0 <= this.s && this.s <= 1 || isNaN(this.s))
           && (0 <= this.l && this.l <= 1)
           && (0 <= this.opacity && this.opacity <= 1);
+    },
+    formatHsl: function() {
+      var a = this.opacity; a = isNaN(a) ? 1 : Math.max(0, Math.min(1, a));
+      return (a === 1 ? "hsl(" : "hsla(")
+          + (this.h || 0) + ", "
+          + (this.s || 0) * 100 + "%, "
+          + (this.l || 0) * 100 + "%"
+          + (a === 1 ? ")" : ", " + a + ")");
     }
   }));
 
@@ -1428,7 +1460,7 @@
   var deg2rad = Math.PI / 180;
   var rad2deg = 180 / Math.PI;
 
-  // https://beta.observablehq.com/@mbostock/lab-and-rgb
+  // https://observablehq.com/@mbostock/lab-and-rgb
   var K = 18,
       Xn = 0.96422,
       Yn = 1,
@@ -1440,11 +1472,7 @@
 
   function labConvert(o) {
     if (o instanceof Lab) return new Lab(o.l, o.a, o.b, o.opacity);
-    if (o instanceof Hcl) {
-      if (isNaN(o.h)) return new Lab(o.l, 0, 0, o.opacity);
-      var h = o.h * deg2rad;
-      return new Lab(o.l, Math.cos(h) * o.c, Math.sin(h) * o.c, o.opacity);
-    }
+    if (o instanceof Hcl) return hcl2lab(o);
     if (!(o instanceof Rgb)) o = rgbConvert(o);
     var r = rgb2lrgb(o.r),
         g = rgb2lrgb(o.g),
@@ -1510,7 +1538,7 @@
   function hclConvert(o) {
     if (o instanceof Hcl) return new Hcl(o.h, o.c, o.l, o.opacity);
     if (!(o instanceof Lab)) o = labConvert(o);
-    if (o.a === 0 && o.b === 0) return new Hcl(NaN, 0, o.l, o.opacity);
+    if (o.a === 0 && o.b === 0) return new Hcl(NaN, 0 < o.l && o.l < 100 ? 0 : NaN, o.l, o.opacity);
     var h = Math.atan2(o.b, o.a) * rad2deg;
     return new Hcl(h < 0 ? h + 360 : h, Math.sqrt(o.a * o.a + o.b * o.b), o.l, o.opacity);
   }
@@ -1526,6 +1554,12 @@
     this.opacity = +opacity;
   }
 
+  function hcl2lab(o) {
+    if (isNaN(o.h)) return new Lab(o.l, 0, 0, o.opacity);
+    var h = o.h * deg2rad;
+    return new Lab(o.l, Math.cos(h) * o.c, Math.sin(h) * o.c, o.opacity);
+  }
+
   define(Hcl, hcl, extend(Color, {
     brighter: function(k) {
       return new Hcl(this.h, this.c, this.l + K * (k == null ? 1 : k), this.opacity);
@@ -1534,7 +1568,7 @@
       return new Hcl(this.h, this.c, this.l - K * (k == null ? 1 : k), this.opacity);
     },
     rgb: function() {
-      return labConvert(this).rgb();
+      return hcl2lab(this).rgb();
     }
   }));
 
@@ -1652,7 +1686,22 @@
     return rgb$1;
   })(1);
 
-  function array$1(a, b) {
+  function numberArray(a, b) {
+    if (!b) b = [];
+    var n = a ? Math.min(b.length, a.length) : 0,
+        c = b.slice(),
+        i;
+    return function(t) {
+      for (i = 0; i < n; ++i) c[i] = a[i] * (1 - t) + b[i] * t;
+      return c;
+    };
+  }
+
+  function isNumberArray(x) {
+    return ArrayBuffer.isView(x) && !(x instanceof DataView);
+  }
+
+  function genericArray(a, b) {
     var nb = b ? b.length : 0,
         na = a ? Math.min(nb, a.length) : 0,
         x = new Array(na),
@@ -1670,14 +1719,14 @@
 
   function date(a, b) {
     var d = new Date;
-    return a = +a, b -= a, function(t) {
-      return d.setTime(a + b * t), d;
+    return a = +a, b = +b, function(t) {
+      return d.setTime(a * (1 - t) + b * t), d;
     };
   }
 
   function interpolateNumber(a, b) {
-    return a = +a, b -= a, function(t) {
-      return a + b * t;
+    return a = +a, b = +b, function(t) {
+      return a * (1 - t) + b * t;
     };
   }
 
@@ -1773,14 +1822,15 @@
         : t === "string" ? ((c = color(b)) ? (b = c, interpolateRgb) : interpolateString)
         : b instanceof color ? interpolateRgb
         : b instanceof Date ? date
-        : Array.isArray(b) ? array$1
+        : isNumberArray(b) ? numberArray
+        : Array.isArray(b) ? genericArray
         : typeof b.valueOf !== "function" && typeof b.toString !== "function" || isNaN(b) ? object
         : interpolateNumber)(a, b);
   }
 
   function interpolateRound(a, b) {
-    return a = +a, b -= a, function(t) {
-      return Math.round(a + b * t);
+    return a = +a, b = +b, function(t) {
+      return Math.round(a * (1 - t) + b * t);
     };
   }
 
@@ -1895,8 +1945,6 @@
 
   var interpolateTransformCss = interpolateTransform(parseCss, "px, ", "px)", "deg)");
   var interpolateTransformSvg = interpolateTransform(parseSvg, ", ", ")", ")");
-
-  var rho = Math.SQRT2;
 
   function cubehelix$1(hue) {
     return (function cubehelixGamma(y) {
@@ -2043,10 +2091,16 @@
     return rescale();
   }
 
+  function formatDecimal(x) {
+    return Math.abs(x = Math.round(x)) >= 1e21
+        ? x.toLocaleString("en").replace(/,/g, "")
+        : x.toString(10);
+  }
+
   // Computes the decimal coefficient and exponent of the specified number x with
   // significant digits p, where x is positive and p is in [1, 21] or undefined.
-  // For example, formatDecimal(1.23) returns ["123", 0].
-  function formatDecimal(x, p) {
+  // For example, formatDecimalParts(1.23) returns ["123", 0].
+  function formatDecimalParts(x, p) {
     if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ±Infinity
     var i, coefficient = x.slice(0, i);
 
@@ -2059,7 +2113,7 @@
   }
 
   function exponent(x) {
-    return x = formatDecimal(Math.abs(x)), x ? x[1] : NaN;
+    return x = formatDecimalParts(Math.abs(x)), x ? x[1] : NaN;
   }
 
   function formatGroup(grouping, thousands) {
@@ -2093,24 +2147,35 @@
   var re = /^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([a-z%])?$/i;
 
   function formatSpecifier(specifier) {
-    return new FormatSpecifier(specifier);
+    if (!(match = re.exec(specifier))) throw new Error("invalid format: " + specifier);
+    var match;
+    return new FormatSpecifier({
+      fill: match[1],
+      align: match[2],
+      sign: match[3],
+      symbol: match[4],
+      zero: match[5],
+      width: match[6],
+      comma: match[7],
+      precision: match[8] && match[8].slice(1),
+      trim: match[9],
+      type: match[10]
+    });
   }
 
   formatSpecifier.prototype = FormatSpecifier.prototype; // instanceof
 
   function FormatSpecifier(specifier) {
-    if (!(match = re.exec(specifier))) throw new Error("invalid format: " + specifier);
-    var match;
-    this.fill = match[1] || " ";
-    this.align = match[2] || ">";
-    this.sign = match[3] || "-";
-    this.symbol = match[4] || "";
-    this.zero = !!match[5];
-    this.width = match[6] && +match[6];
-    this.comma = !!match[7];
-    this.precision = match[8] && +match[8].slice(1);
-    this.trim = !!match[9];
-    this.type = match[10] || "";
+    this.fill = specifier.fill === undefined ? " " : specifier.fill + "";
+    this.align = specifier.align === undefined ? ">" : specifier.align + "";
+    this.sign = specifier.sign === undefined ? "-" : specifier.sign + "";
+    this.symbol = specifier.symbol === undefined ? "" : specifier.symbol + "";
+    this.zero = !!specifier.zero;
+    this.width = specifier.width === undefined ? undefined : +specifier.width;
+    this.comma = !!specifier.comma;
+    this.precision = specifier.precision === undefined ? undefined : +specifier.precision;
+    this.trim = !!specifier.trim;
+    this.type = specifier.type === undefined ? "" : specifier.type + "";
   }
 
   FormatSpecifier.prototype.toString = function() {
@@ -2119,9 +2184,9 @@
         + this.sign
         + this.symbol
         + (this.zero ? "0" : "")
-        + (this.width == null ? "" : Math.max(1, this.width | 0))
+        + (this.width === undefined ? "" : Math.max(1, this.width | 0))
         + (this.comma ? "," : "")
-        + (this.precision == null ? "" : "." + Math.max(0, this.precision | 0))
+        + (this.precision === undefined ? "" : "." + Math.max(0, this.precision | 0))
         + (this.trim ? "~" : "")
         + this.type;
   };
@@ -2132,7 +2197,7 @@
       switch (s[i]) {
         case ".": i0 = i1 = i; break;
         case "0": if (i0 === 0) i0 = i; i1 = i; break;
-        default: if (i0 > 0) { if (!+s[i]) break out; i0 = 0; } break;
+        default: if (!+s[i]) break out; if (i0 > 0) i0 = 0; break;
       }
     }
     return i0 > 0 ? s.slice(0, i0) + s.slice(i1 + 1) : s;
@@ -2141,7 +2206,7 @@
   var prefixExponent;
 
   function formatPrefixAuto(x, p) {
-    var d = formatDecimal(x, p);
+    var d = formatDecimalParts(x, p);
     if (!d) return x + "";
     var coefficient = d[0],
         exponent = d[1],
@@ -2150,11 +2215,11 @@
     return i === n ? coefficient
         : i > n ? coefficient + new Array(i - n + 1).join("0")
         : i > 0 ? coefficient.slice(0, i) + "." + coefficient.slice(i)
-        : "0." + new Array(1 - i).join("0") + formatDecimal(x, Math.max(0, p + i - 1))[0]; // less than 1y!
+        : "0." + new Array(1 - i).join("0") + formatDecimalParts(x, Math.max(0, p + i - 1))[0]; // less than 1y!
   }
 
   function formatRounded(x, p) {
-    var d = formatDecimal(x, p);
+    var d = formatDecimalParts(x, p);
     if (!d) return x + "";
     var coefficient = d[0],
         exponent = d[1];
@@ -2167,7 +2232,7 @@
     "%": function(x, p) { return (x * 100).toFixed(p); },
     "b": function(x) { return Math.round(x).toString(2); },
     "c": function(x) { return x + ""; },
-    "d": function(x) { return Math.round(x).toString(10); },
+    "d": formatDecimal,
     "e": function(x, p) { return x.toExponential(p); },
     "f": function(x, p) { return x.toFixed(p); },
     "g": function(x, p) { return x.toPrecision(p); },
@@ -2183,14 +2248,18 @@
     return x;
   }
 
-  var prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
+  var map$2 = Array.prototype.map,
+      prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
 
   function formatLocale(locale) {
-    var group = locale.grouping && locale.thousands ? formatGroup(locale.grouping, locale.thousands) : identity$1,
-        currency = locale.currency,
-        decimal = locale.decimal,
-        numerals = locale.numerals ? formatNumerals(locale.numerals) : identity$1,
-        percent = locale.percent || "%";
+    var group = locale.grouping === undefined || locale.thousands === undefined ? identity$1 : formatGroup(map$2.call(locale.grouping, Number), locale.thousands + ""),
+        currencyPrefix = locale.currency === undefined ? "" : locale.currency[0] + "",
+        currencySuffix = locale.currency === undefined ? "" : locale.currency[1] + "",
+        decimal = locale.decimal === undefined ? "." : locale.decimal + "",
+        numerals = locale.numerals === undefined ? identity$1 : formatNumerals(map$2.call(locale.numerals, String)),
+        percent = locale.percent === undefined ? "%" : locale.percent + "",
+        minus = locale.minus === undefined ? "-" : locale.minus + "",
+        nan = locale.nan === undefined ? "NaN" : locale.nan + "";
 
     function newFormat(specifier) {
       specifier = formatSpecifier(specifier);
@@ -2210,15 +2279,15 @@
       if (type === "n") comma = true, type = "g";
 
       // The "" type, and any invalid type, is an alias for ".12~g".
-      else if (!formatTypes[type]) precision == null && (precision = 12), trim = true, type = "g";
+      else if (!formatTypes[type]) precision === undefined && (precision = 12), trim = true, type = "g";
 
       // If zero fill is specified, padding goes after sign and before digits.
       if (zero || (fill === "0" && align === "=")) zero = true, fill = "0", align = "=";
 
       // Compute the prefix and suffix.
       // For SI-prefix, the suffix is lazily computed.
-      var prefix = symbol === "$" ? currency[0] : symbol === "#" && /[boxX]/.test(type) ? "0" + type.toLowerCase() : "",
-          suffix = symbol === "$" ? currency[1] : /[%p]/.test(type) ? percent : "";
+      var prefix = symbol === "$" ? currencyPrefix : symbol === "#" && /[boxX]/.test(type) ? "0" + type.toLowerCase() : "",
+          suffix = symbol === "$" ? currencySuffix : /[%p]/.test(type) ? percent : "";
 
       // What format function should we use?
       // Is this an integer type?
@@ -2230,7 +2299,7 @@
       // or clamp the specified precision to the supported range.
       // For significant precision, it must be in [1, 21].
       // For fixed precision, it must be in [0, 20].
-      precision = precision == null ? 6
+      precision = precision === undefined ? 6
           : /[gprs]/.test(type) ? Math.max(1, Math.min(21, precision))
           : Math.max(0, Math.min(20, precision));
 
@@ -2245,18 +2314,20 @@
         } else {
           value = +value;
 
+          // Determine the sign. -0 is not less than 0, but 1 / -0 is!
+          var valueNegative = value < 0 || 1 / value < 0;
+
           // Perform the initial formatting.
-          var valueNegative = value < 0;
-          value = formatType(Math.abs(value), precision);
+          value = isNaN(value) ? nan : formatType(Math.abs(value), precision);
 
           // Trim insignificant zeros.
           if (trim) value = formatTrim(value);
 
-          // If a negative value rounds to zero during formatting, treat as positive.
-          if (valueNegative && +value === 0) valueNegative = false;
+          // If a negative value rounds to zero after formatting, and no explicit positive sign is requested, hide the sign.
+          if (valueNegative && +value === 0 && sign !== "+") valueNegative = false;
 
           // Compute the prefix and suffix.
-          valuePrefix = (valueNegative ? (sign === "(" ? sign : "-") : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
+          valuePrefix = (valueNegative ? (sign === "(" ? sign : minus) : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
           valueSuffix = (type === "s" ? prefixes[8 + prefixExponent / 3] : "") + valueSuffix + (valueNegative && sign === "(" ? ")" : "");
 
           // Break the formatted value into the integer “value” part that can be
@@ -2325,7 +2396,8 @@
     decimal: ".",
     thousands: ",",
     grouping: [3],
-    currency: ["$", ""]
+    currency: ["$", ""],
+    minus: "-"
   });
 
   function defaultLocale(definition) {
@@ -2448,10 +2520,12 @@
   function newInterval(floori, offseti, count, field) {
 
     function interval(date) {
-      return floori(date = new Date(+date)), date;
+      return floori(date = arguments.length === 0 ? new Date : new Date(+date)), date;
     }
 
-    interval.floor = interval;
+    interval.floor = function(date) {
+      return floori(date = new Date(+date)), date;
+    };
 
     interval.ceil = function(date) {
       return floori(date = new Date(date - 1)), offseti(date, 1), floori(date), date;
@@ -2731,8 +2805,8 @@
     return new Date(Date.UTC(d.y, d.m, d.d, d.H, d.M, d.S, d.L));
   }
 
-  function newYear(y) {
-    return {y: y, m: 0, d: 1, H: 0, M: 0, S: 0, L: 0};
+  function newDate(y, m, d) {
+    return {y: y, m: m, d: d, H: 0, M: 0, S: 0, L: 0};
   }
 
   function formatLocale$1(locale) {
@@ -2765,6 +2839,8 @@
       "d": formatDayOfMonth,
       "e": formatDayOfMonth,
       "f": formatMicroseconds,
+      "g": formatYearISO,
+      "G": formatFullYearISO,
       "H": formatHour24,
       "I": formatHour12,
       "j": formatDayOfYear,
@@ -2772,6 +2848,7 @@
       "m": formatMonthNumber,
       "M": formatMinutes,
       "p": formatPeriod,
+      "q": formatQuarter,
       "Q": formatUnixTimestamp,
       "s": formatUnixTimestampSeconds,
       "S": formatSeconds,
@@ -2797,6 +2874,8 @@
       "d": formatUTCDayOfMonth,
       "e": formatUTCDayOfMonth,
       "f": formatUTCMicroseconds,
+      "g": formatUTCYearISO,
+      "G": formatUTCFullYearISO,
       "H": formatUTCHour24,
       "I": formatUTCHour12,
       "j": formatUTCDayOfYear,
@@ -2804,6 +2883,7 @@
       "m": formatUTCMonthNumber,
       "M": formatUTCMinutes,
       "p": formatUTCPeriod,
+      "q": formatUTCQuarter,
       "Q": formatUnixTimestamp,
       "s": formatUnixTimestampSeconds,
       "S": formatUTCSeconds,
@@ -2829,6 +2909,8 @@
       "d": parseDayOfMonth,
       "e": parseDayOfMonth,
       "f": parseMicroseconds,
+      "g": parseYear,
+      "G": parseFullYear,
       "H": parseHour24,
       "I": parseHour24,
       "j": parseDayOfYear,
@@ -2836,6 +2918,7 @@
       "m": parseMonthNumber,
       "M": parseMinutes,
       "p": parsePeriod,
+      "q": parseQuarter,
       "Q": parseUnixTimestamp,
       "s": parseUnixTimestampSeconds,
       "S": parseSeconds,
@@ -2888,32 +2971,39 @@
       };
     }
 
-    function newParse(specifier, newDate) {
+    function newParse(specifier, Z) {
       return function(string) {
-        var d = newYear(1900),
+        var d = newDate(1900, undefined, 1),
             i = parseSpecifier(d, specifier, string += "", 0),
             week, day$1;
         if (i != string.length) return null;
 
         // If a UNIX timestamp is specified, return it.
         if ("Q" in d) return new Date(d.Q);
+        if ("s" in d) return new Date(d.s * 1000 + ("L" in d ? d.L : 0));
+
+        // If this is utcParse, never use the local timezone.
+        if (Z && !("Z" in d)) d.Z = 0;
 
         // The am-pm flag is 0 for AM, and 1 for PM.
         if ("p" in d) d.H = d.H % 12 + d.p * 12;
+
+        // If the month was not specified, inherit from the quarter.
+        if (d.m === undefined) d.m = "q" in d ? d.q : 0;
 
         // Convert day-of-week and week-of-year to day-of-year.
         if ("V" in d) {
           if (d.V < 1 || d.V > 53) return null;
           if (!("w" in d)) d.w = 1;
           if ("Z" in d) {
-            week = utcDate(newYear(d.y)), day$1 = week.getUTCDay();
+            week = utcDate(newDate(d.y, 0, 1)), day$1 = week.getUTCDay();
             week = day$1 > 4 || day$1 === 0 ? utcMonday.ceil(week) : utcMonday(week);
             week = utcDay.offset(week, (d.V - 1) * 7);
             d.y = week.getUTCFullYear();
             d.m = week.getUTCMonth();
             d.d = week.getUTCDate() + (d.w + 6) % 7;
           } else {
-            week = newDate(newYear(d.y)), day$1 = week.getDay();
+            week = localDate(newDate(d.y, 0, 1)), day$1 = week.getDay();
             week = day$1 > 4 || day$1 === 0 ? monday.ceil(week) : monday(week);
             week = day.offset(week, (d.V - 1) * 7);
             d.y = week.getFullYear();
@@ -2922,7 +3012,7 @@
           }
         } else if ("W" in d || "U" in d) {
           if (!("w" in d)) d.w = "u" in d ? d.u % 7 : "W" in d ? 1 : 0;
-          day$1 = "Z" in d ? utcDate(newYear(d.y)).getUTCDay() : newDate(newYear(d.y)).getDay();
+          day$1 = "Z" in d ? utcDate(newDate(d.y, 0, 1)).getUTCDay() : localDate(newDate(d.y, 0, 1)).getDay();
           d.m = 0;
           d.d = "W" in d ? (d.w + 6) % 7 + d.W * 7 - (day$1 + 5) % 7 : d.w + d.U * 7 - (day$1 + 6) % 7;
         }
@@ -2936,7 +3026,7 @@
         }
 
         // Otherwise, all fields are in local time.
-        return newDate(d);
+        return localDate(d);
       };
     }
 
@@ -3019,6 +3109,10 @@
       return locale_periods[+(d.getHours() >= 12)];
     }
 
+    function formatQuarter(d) {
+      return 1 + ~~(d.getMonth() / 3);
+    }
+
     function formatUTCShortWeekday(d) {
       return locale_shortWeekdays[d.getUTCDay()];
     }
@@ -3039,6 +3133,10 @@
       return locale_periods[+(d.getUTCHours() >= 12)];
     }
 
+    function formatUTCQuarter(d) {
+      return 1 + ~~(d.getUTCMonth() / 3);
+    }
+
     return {
       format: function(specifier) {
         var f = newFormat(specifier += "", formats);
@@ -3046,7 +3144,7 @@
         return f;
       },
       parse: function(specifier) {
-        var p = newParse(specifier += "", localDate);
+        var p = newParse(specifier += "", false);
         p.toString = function() { return specifier; };
         return p;
       },
@@ -3056,7 +3154,7 @@
         return f;
       },
       utcParse: function(specifier) {
-        var p = newParse(specifier, utcDate);
+        var p = newParse(specifier += "", true);
         p.toString = function() { return specifier; };
         return p;
       }
@@ -3129,6 +3227,11 @@
     return n ? (d.Z = n[1] ? 0 : -(n[2] + (n[3] || "00")), i + n[0].length) : -1;
   }
 
+  function parseQuarter(d, string, i) {
+    var n = numberRe.exec(string.slice(i, i + 1));
+    return n ? (d.q = n[0] * 3 - 3, i + n[0].length) : -1;
+  }
+
   function parseMonthNumber(d, string, i) {
     var n = numberRe.exec(string.slice(i, i + 2));
     return n ? (d.m = n[0] - 1, i + n[0].length) : -1;
@@ -3181,7 +3284,7 @@
 
   function parseUnixTimestampSeconds(d, string, i) {
     var n = numberRe.exec(string.slice(i));
-    return n ? (d.Q = (+n[0]) * 1000, i + n[0].length) : -1;
+    return n ? (d.s = +n[0], i + n[0].length) : -1;
   }
 
   function formatDayOfMonth(d, p) {
@@ -3226,12 +3329,16 @@
   }
 
   function formatWeekNumberSunday(d, p) {
-    return pad(sunday.count(year(d), d), p, 2);
+    return pad(sunday.count(year(d) - 1, d), p, 2);
+  }
+
+  function dISO(d) {
+    var day = d.getDay();
+    return (day >= 4 || day === 0) ? thursday(d) : thursday.ceil(d);
   }
 
   function formatWeekNumberISO(d, p) {
-    var day = d.getDay();
-    d = (day >= 4 || day === 0) ? thursday(d) : thursday.ceil(d);
+    d = dISO(d);
     return pad(thursday.count(year(d), d) + (year(d).getDay() === 4), p, 2);
   }
 
@@ -3240,14 +3347,25 @@
   }
 
   function formatWeekNumberMonday(d, p) {
-    return pad(monday.count(year(d), d), p, 2);
+    return pad(monday.count(year(d) - 1, d), p, 2);
   }
 
   function formatYear(d, p) {
     return pad(d.getFullYear() % 100, p, 2);
   }
 
+  function formatYearISO(d, p) {
+    d = dISO(d);
+    return pad(d.getFullYear() % 100, p, 2);
+  }
+
   function formatFullYear(d, p) {
+    return pad(d.getFullYear() % 10000, p, 4);
+  }
+
+  function formatFullYearISO(d, p) {
+    var day = d.getDay();
+    d = (day >= 4 || day === 0) ? thursday(d) : thursday.ceil(d);
     return pad(d.getFullYear() % 10000, p, 4);
   }
 
@@ -3300,12 +3418,16 @@
   }
 
   function formatUTCWeekNumberSunday(d, p) {
-    return pad(utcSunday.count(utcYear(d), d), p, 2);
+    return pad(utcSunday.count(utcYear(d) - 1, d), p, 2);
+  }
+
+  function UTCdISO(d) {
+    var day = d.getUTCDay();
+    return (day >= 4 || day === 0) ? utcThursday(d) : utcThursday.ceil(d);
   }
 
   function formatUTCWeekNumberISO(d, p) {
-    var day = d.getUTCDay();
-    d = (day >= 4 || day === 0) ? utcThursday(d) : utcThursday.ceil(d);
+    d = UTCdISO(d);
     return pad(utcThursday.count(utcYear(d), d) + (utcYear(d).getUTCDay() === 4), p, 2);
   }
 
@@ -3314,14 +3436,25 @@
   }
 
   function formatUTCWeekNumberMonday(d, p) {
-    return pad(utcMonday.count(utcYear(d), d), p, 2);
+    return pad(utcMonday.count(utcYear(d) - 1, d), p, 2);
   }
 
   function formatUTCYear(d, p) {
     return pad(d.getUTCFullYear() % 100, p, 2);
   }
 
+  function formatUTCYearISO(d, p) {
+    d = UTCdISO(d);
+    return pad(d.getUTCFullYear() % 100, p, 2);
+  }
+
   function formatUTCFullYear(d, p) {
+    return pad(d.getUTCFullYear() % 10000, p, 4);
+  }
+
+  function formatUTCFullYearISO(d, p) {
+    var day = d.getUTCDay();
+    d = (day >= 4 || day === 0) ? utcThursday(d) : utcThursday.ceil(d);
     return pad(d.getUTCFullYear() % 10000, p, 4);
   }
 
@@ -3597,7 +3730,7 @@
 
   function dispatch() {
     for (var i = 0, n = arguments.length, _ = {}, t; i < n; ++i) {
-      if (!(t = arguments[i] + "") || (t in _)) throw new Error("illegal type: " + t);
+      if (!(t = arguments[i] + "") || (t in _) || /[\s.]/.test(t)) throw new Error("illegal type: " + t);
       _[t] = [];
     }
     return new Dispatch(_);
@@ -4141,13 +4274,13 @@
 
   function attrInterpolate(name, i) {
     return function(t) {
-      this.setAttribute(name, i(t));
+      this.setAttribute(name, i.call(this, t));
     };
   }
 
   function attrInterpolateNS(fullname, i) {
     return function(t) {
-      this.setAttributeNS(fullname.space, fullname.local, i(t));
+      this.setAttributeNS(fullname.space, fullname.local, i.call(this, t));
     };
   }
 
@@ -4441,7 +4574,7 @@
 
   function styleInterpolate(name, i, priority) {
     return function(t) {
-      this.style.setProperty(name, i(t), priority);
+      this.style.setProperty(name, i.call(this, t), priority);
     };
   }
 
@@ -4481,6 +4614,31 @@
     return this.tween("text", typeof value === "function"
         ? textFunction$1(tweenValue(this, "text", value))
         : textConstant$1(value == null ? "" : value + ""));
+  }
+
+  function textInterpolate(i) {
+    return function(t) {
+      this.textContent = i.call(this, t);
+    };
+  }
+
+  function textTween(value) {
+    var t0, i0;
+    function tween() {
+      var i = value.apply(this, arguments);
+      if (i !== i0) t0 = (i0 = i) && textInterpolate(i);
+      return t0;
+    }
+    tween._value = value;
+    return tween;
+  }
+
+  function transition_textTween(value) {
+    var key = "text";
+    if (arguments.length < 1) return (key = this.tween(key)) && key._value;
+    if (value == null) return this.tween(key, null);
+    if (typeof value !== "function") throw new Error;
+    return this.tween(key, textTween(value));
   }
 
   function transition_transition() {
@@ -4569,6 +4727,7 @@
     style: transition_style,
     styleTween: transition_styleTween,
     text: transition_text,
+    textTween: transition_textTween,
     remove: transition_remove,
     tween: transition_tween,
     delay: transition_delay,
@@ -4580,10 +4739,6 @@
   function cubicInOut(t) {
     return ((t *= 2) <= 1 ? t * t * t : (t -= 2) * t * t + 2) / 2;
   }
-
-  var pi = Math.PI;
-
-  var tau = 2 * Math.PI;
 
   var defaultTiming = {
     time: null, // Set on use.
@@ -4627,965 +4782,4494 @@
   selection.prototype.transition = selection_transition;
 
   var party_colors = {
-      "African National Congress" : "#00993f",
-      "Democratic Alliance" : "#015ca3",
-      "Inkatha Freedom Party" : "e91c23",
-      "Economic Freedom Fighters" : "#850000",
-      "Congress  Of The People" : "#ffca08",
-      "African Christian Democratic Party" : "#005284",
-      "United Democratic Movement" : "#fdb415",
-      "Vryheidsfront Plus" : "#017f01",
-      "Agang South Africa" : "#00764b",
-      "Azanian People's Organisation" : "#622f06",
-      "Pan Africanist Congress of Azania" : "#036637",
+      "AFRICAN NATIONAL CONGRESS" : "#00993f",
+      "DEMOCRATIC ALLIANCE" : "#015CA3",
+      "INKATHA FREEDOM PARTY" : "E91C23",
+      "ECONOMIC FREEDOM FIGHTERS" : "#850000",
+      "CONGRESS  OF THE PEOPLE" : "#FFCA08",
+      "AFRICAN CHRISTIAN DEMOCRATIC PARTY" : "#005284",
+      "UNITED DEMOCRATIC MOVEMENT" : "#FDB415",
+      "VRYHEIDSFRONT PLUS" : "#017F01",
+      "AGANG SOUTH AFRICA" : "#00764B",
+      "AZANIAN PEOPLE'S ORGANISATION" : "#622F06",
+      "PAN AFRICANIST CONGRESS OF AZANIA" : "#036637",
   };
 
   var parties = [
-      {
-          "male": 620,
-          "female": 410,
-          "medianAge": 43.0,
-          "party": "Democratic Alliance",
-          "total": 1030,
-          "femaleRatio": 0.4,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 45.5
-      },
-      {
-          "male": 604,
-          "female": 371,
-          "medianAge": 43,
-          "party": "African Transformation Movement",
-          "total": 975,
-          "femaleRatio": 0.38,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 42.5
-      },
-      {
-          "male": 384,
-          "female": 457,
-          "medianAge": 43,
-          "party": "African People's Convention",
-          "total": 841,
-          "femaleRatio": 0.54,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 56.0
-      },
-      {
-          "male": 418,
-          "female": 412,
-          "medianAge": 41.0,
-          "party": "Economic Freedom Fighters",
-          "total": 830,
-          "femaleRatio": 0.5,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 38.0
-      },
-      {
-          "male": 412,
-          "female": 415,
-          "medianAge": 52,
-          "party": "African National Congress",
-          "total": 827,
-          "femaleRatio": 0.5,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 53.5
-      },
-      {
-          "male": 481,
-          "female": 279,
-          "medianAge": 42.0,
-          "party": "Good",
-          "total": 760,
-          "femaleRatio": 0.37,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 47.0
-      },
-      {
-          "male": 378,
-          "female": 235,
-          "medianAge": 49,
-          "party": "African Christian Democratic Party",
-          "total": 613,
-          "femaleRatio": 0.38,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 58.0
-      },
-      {
-          "male": 223,
-          "female": 316,
-          "medianAge": 38,
-          "party": "International Revelation Congress",
-          "total": 539,
-          "femaleRatio": 0.59,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 47.0
-      },
-      {
-          "male": 295,
-          "female": 184,
-          "medianAge": 41,
-          "party": "African Content Movement",
-          "total": 479,
-          "femaleRatio": 0.38,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 34.5
-      },
-      {
-          "male": 280,
-          "female": 172,
-          "medianAge": 52.5,
-          "party": "Congress  Of The People",
-          "total": 452,
-          "femaleRatio": 0.38,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 50.5
-      },
-      {
-          "male": 306,
-          "female": 138,
-          "medianAge": 53.0,
-          "party": "Vryheidsfront Plus",
-          "total": 444,
-          "femaleRatio": 0.31,
-          "top10Male": 9,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.1,
-          "top10MedianAge": 57.5
-      },
-      {
-          "male": 287,
-          "female": 139,
-          "medianAge": 49.0,
-          "party": "Azanian People's Organisation",
-          "total": 426,
-          "femaleRatio": 0.33,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 59.5
-      },
-      {
-          "male": 252,
-          "female": 152,
-          "medianAge": 42.0,
-          "party": "United Democratic Movement",
-          "total": 404,
-          "femaleRatio": 0.38,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 45.0
-      },
-      {
-          "male": 294,
-          "female": 109,
-          "medianAge": 46,
-          "party": "Pan Africanist Congress Of Azania",
-          "total": 403,
-          "femaleRatio": 0.27,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 45.0
-      },
-      {
-          "male": 3,
-          "female": 346,
-          "medianAge": 42,
-          "party": "Women Forward",
-          "total": 349,
-          "femaleRatio": 0.99,
-          "top10Male": 0,
-          "top10Female": 10,
-          "top10FemaleRatio": 1.0,
-          "top10MedianAge": 58.0
-      },
-      {
-          "male": 205,
-          "female": 103,
-          "medianAge": 41.5,
-          "party": "Socialist Revolutionary Workers Party",
-          "total": 308,
-          "femaleRatio": 0.33,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 50.0
-      },
-      {
-          "male": 167,
-          "female": 125,
-          "medianAge": 48.0,
-          "party": "National Freedom Party",
-          "total": 292,
-          "femaleRatio": 0.43,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 55.0
-      },
-      {
-          "male": 196,
-          "female": 95,
-          "medianAge": 38,
-          "party": "African Democratic Change",
-          "total": 291,
-          "femaleRatio": 0.33,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 45.0
-      },
-      {
-          "male": 164,
-          "female": 114,
-          "medianAge": 47.0,
-          "party": "African Covenant",
-          "total": 278,
-          "femaleRatio": 0.41,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 50.0
-      },
-      {
-          "male": 175,
-          "female": 99,
-          "medianAge": 49.0,
-          "party": "Alliance For Transformation For All",
-          "total": 274,
-          "femaleRatio": 0.36,
-          "top10Male": 9,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.1,
-          "top10MedianAge": 55.0
-      },
-      {
-          "male": 161,
-          "female": 100,
-          "medianAge": 41,
-          "party": "Christian Political Movement",
-          "total": 261,
-          "femaleRatio": 0.38,
-          "top10Male": 9,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.1,
-          "top10MedianAge": 55.0
-      },
-      {
-          "male": 61,
-          "female": 168,
-          "medianAge": 34,
-          "party": "Agang South Africa",
-          "total": 229,
-          "femaleRatio": 0.73,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 45.0
-      },
-      {
-          "male": 136,
-          "female": 93,
-          "medianAge": 37,
-          "party": "Black First Land First",
-          "total": 229,
-          "femaleRatio": 0.41,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 50.0
-      },
-      {
-          "male": 131,
-          "female": 96,
-          "medianAge": 42,
-          "party": "African Independent Congress",
-          "total": 227,
-          "femaleRatio": 0.42,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 47.0
-      },
-      {
-          "male": 113,
-          "female": 102,
-          "medianAge": 40,
-          "party": "Power Of Africans Unity",
-          "total": 215,
-          "femaleRatio": 0.47,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 58.0
-      },
-      {
-          "male": 131,
-          "female": 81,
-          "medianAge": 41.0,
-          "party": "Forum 4 Service Delivery",
-          "total": 212,
-          "femaleRatio": 0.38,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 41.0
-      },
-      {
-          "male": 121,
-          "female": 89,
-          "medianAge": 45.0,
-          "party": "Inkatha Freedom Party",
-          "total": 210,
-          "femaleRatio": 0.42,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 43.5
-      },
-      {
-          "male": 100,
-          "female": 70,
-          "medianAge": 39.0,
-          "party": "South African National Congress Of Traditional Authorities",
-          "total": 170,
-          "femaleRatio": 0.41,
-          "top10Male": 9,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.1,
-          "top10MedianAge": 56.0
-      },
-      {
-          "male": 87,
-          "female": 78,
-          "medianAge": 39,
-          "party": "National Peoples Ambassadors",
-          "total": 165,
-          "femaleRatio": 0.47,
-          "top10Male": 4,
-          "top10Female": 6,
-          "top10FemaleRatio": 0.6,
-          "top10MedianAge": 44.5
-      },
-      {
-          "male": 92,
-          "female": 55,
-          "medianAge": 44,
-          "party": "Economic Emancipation Forum",
-          "total": 147,
-          "femaleRatio": 0.37,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 44.5
-      },
-      {
-          "male": 76,
-          "female": 61,
-          "medianAge": 43,
-          "party": "Better Residents Association",
-          "total": 137,
-          "femaleRatio": 0.45,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 45.5
-      },
-      {
-          "male": 74,
-          "female": 63,
-          "medianAge": 37,
-          "party": "Land Party",
-          "total": 137,
-          "femaleRatio": 0.46,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 37.0
-      },
-      {
-          "male": 66,
-          "female": 37,
-          "medianAge": 45,
-          "party": "National People's Front",
-          "total": 103,
-          "femaleRatio": 0.36,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 42.0
-      },
-      {
-          "male": 55,
-          "female": 46,
-          "medianAge": 36,
-          "party": "Afrikan Alliance Of Social Democrats",
-          "total": 101,
-          "femaleRatio": 0.46,
-          "top10Male": 9,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.1,
-          "top10MedianAge": 62.0
-      },
-      {
-          "male": 63,
-          "female": 33,
-          "medianAge": 53.0,
-          "party": "African Renaissance Unity",
-          "total": 96,
-          "femaleRatio": 0.34,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 56.0
-      },
-      {
-          "male": 41,
-          "female": 55,
-          "medianAge": 43.0,
-          "party": "People's Revolutionary Movement",
-          "total": 96,
-          "femaleRatio": 0.57,
-          "top10Male": 3,
-          "top10Female": 7,
-          "top10FemaleRatio": 0.7,
-          "top10MedianAge": 55.0
-      },
-      {
-          "male": 52,
-          "female": 40,
-          "medianAge": 42.0,
-          "party": "African Congress Of Democrats",
-          "total": 92,
-          "femaleRatio": 0.43,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 48.0
-      },
-      {
-          "male": 34,
-          "female": 51,
-          "medianAge": 38,
-          "party": "Free Democrats",
-          "total": 85,
-          "femaleRatio": 0.6,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 60.0
-      },
-      {
-          "male": 50,
-          "female": 34,
-          "medianAge": 55.0,
-          "party": "Al Jama-Ah",
-          "total": 84,
-          "femaleRatio": 0.4,
-          "top10Male": 9,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.1,
-          "top10MedianAge": 70.0
-      },
-      {
-          "male": 38,
-          "female": 32,
-          "medianAge": 50.0,
-          "party": "Compatriots Of South Africa",
-          "total": 70,
-          "femaleRatio": 0.46,
-          "top10Male": 9,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.1,
-          "top10MedianAge": 47.0
-      },
-      {
-          "male": 33,
-          "female": 23,
-          "medianAge": 40.0,
-          "party": "Patriotic Alliance",
-          "total": 56,
-          "femaleRatio": 0.41,
-          "top10Male": 1,
-          "top10Female": 9,
-          "top10FemaleRatio": 0.9,
-          "top10MedianAge": 40.0
-      },
-      {
-          "male": 7,
-          "female": 49,
-          "medianAge": 44.0,
-          "party": "South African Maintanance And Estate Beneficiaries Association",
-          "total": 56,
-          "femaleRatio": 0.88,
-          "top10Male": 0,
-          "top10Female": 10,
-          "top10FemaleRatio": 1.0,
-          "top10MedianAge": 36.0
-      },
-      {
-          "male": 25,
-          "female": 29,
-          "medianAge": 47.5,
-          "party": "Minority Front",
-          "total": 54,
-          "femaleRatio": 0.54,
-          "top10Male": 0,
-          "top10Female": 10,
-          "top10FemaleRatio": 1.0,
-          "top10MedianAge": 55.0
-      },
-      {
-          "male": 19,
-          "female": 27,
-          "medianAge": 48.5,
-          "party": "African People's Socialist Party",
-          "total": 46,
-          "femaleRatio": 0.59,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 48.5
-      },
-      {
-          "male": 24,
-          "female": 22,
-          "medianAge": 43.5,
-          "party": "Gaza Movement For Change",
-          "total": 46,
-          "femaleRatio": 0.48,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 45.0
-      },
-      {
-          "male": 27,
-          "female": 18,
-          "medianAge": 52,
-          "party": "Independent Civic Organisation Of South Africa",
-          "total": 45,
-          "femaleRatio": 0.4,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 45.0
-      },
-      {
-          "male": 26,
-          "female": 13,
-          "medianAge": 52,
-          "party": "Cape Party/ Kaapse Party",
-          "total": 39,
-          "femaleRatio": 0.33,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 60.0
-      },
-      {
-          "male": 12,
-          "female": 25,
-          "medianAge": 43,
-          "party": "People's Republic Of South Africa",
-          "total": 37,
-          "femaleRatio": 0.68,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 38.5
-      },
-      {
-          "male": 21,
-          "female": 14,
-          "medianAge": 52,
-          "party": "Democratic Liberal Congress",
-          "total": 35,
-          "femaleRatio": 0.4,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 52.0
-      },
-      {
-          "male": 20,
-          "female": 15,
-          "medianAge": 47,
-          "party": "Plaaslike Besorgde Inwoners",
-          "total": 35,
-          "femaleRatio": 0.43,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 51.0
-      },
-      {
-          "male": 17,
-          "female": 14,
-          "medianAge": 56,
-          "party": "United Christian Democratic Party",
-          "total": 31,
-          "femaleRatio": 0.45,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 58.0
-      },
-      {
-          "male": 18,
-          "female": 13,
-          "medianAge": 49,
-          "party": "African Progressive Movement",
-          "total": 31,
-          "femaleRatio": 0.42,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 50.5
-      },
-      {
-          "male": 14,
-          "female": 16,
-          "medianAge": 45.0,
-          "party": "Residence Association Of South Africa",
-          "total": 30,
-          "femaleRatio": 0.53,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 40.5
-      },
-      {
-          "male": 20,
-          "female": 9,
-          "medianAge": 44,
-          "party": "South African Political Party",
-          "total": 29,
-          "femaleRatio": 0.31,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 39.5
-      },
-      {
-          "male": 11,
-          "female": 16,
-          "medianAge": 34,
-          "party": "African Change Academy",
-          "total": 27,
-          "femaleRatio": 0.59,
-          "top10Male": 4,
-          "top10Female": 6,
-          "top10FemaleRatio": 0.6,
-          "top10MedianAge": 32.5
-      },
-      {
-          "male": 18,
-          "female": 9,
-          "medianAge": 44,
-          "party": "Sindawonye Progressive Party",
-          "total": 27,
-          "femaleRatio": 0.33,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 44.5
-      },
-      {
-          "male": 18,
-          "female": 7,
-          "medianAge": 46,
-          "party": "Front Nasionaal/Front National",
-          "total": 25,
-          "femaleRatio": 0.28,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 46.0
-      },
-      {
-          "male": 22,
-          "female": 1,
-          "medianAge": 46,
-          "party": "Capitalist Party Of South Africa",
-          "total": 23,
-          "femaleRatio": 0.04,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 58.0
-      },
-      {
-          "male": 15,
-          "female": 4,
-          "medianAge": 38,
-          "party": "African Security Congress",
-          "total": 19,
-          "femaleRatio": 0.21,
-          "top10Male": 10,
-          "top10Female": 0,
-          "top10FemaleRatio": 0.0,
-          "top10MedianAge": 38.0
-      },
-      {
-          "male": 9,
-          "female": 9,
-          "medianAge": 49.5,
-          "party": "Ximoko Party",
-          "total": 18,
-          "femaleRatio": 0.5,
-          "top10Male": 5,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 44.0
-      },
-      {
-          "male": 7,
-          "female": 10,
-          "medianAge": 35,
-          "party": "South African Concerned Residents Organisation 4 Service Del",
-          "total": 17,
-          "femaleRatio": 0.59,
-          "top10Male": 4,
-          "top10Female": 6,
-          "top10FemaleRatio": 0.6,
-          "top10MedianAge": 34.0
-      },
-      {
-          "male": 12,
-          "female": 3,
-          "medianAge": 48,
-          "party": "Gazankulu Liberation Congress",
-          "total": 15,
-          "femaleRatio": 0.2,
-          "top10Male": 8,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.2,
-          "top10MedianAge": 44.5
-      },
-      {
-          "male": 7,
-          "female": 7,
-          "medianAge": 43.0,
-          "party": "Zenzeleni Progressive Movement",
-          "total": 14,
-          "femaleRatio": 0.5,
-          "top10Male": 4,
-          "top10Female": 6,
-          "top10FemaleRatio": 0.6,
-          "top10MedianAge": 39.5
-      },
-      {
-          "male": 10,
-          "female": 4,
-          "medianAge": 51.5,
-          "party": "Khoisan Revolution",
-          "total": 14,
-          "femaleRatio": 0.29,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 51.0
-      },
-      {
-          "male": 9,
-          "female": 4,
-          "medianAge": 49,
-          "party": "Aboriginal Khoisan",
-          "total": 13,
-          "femaleRatio": 0.31,
-          "top10Male": 7,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.3,
-          "top10MedianAge": 51.0
-      },
-      {
-          "male": 8,
-          "female": 4,
-          "medianAge": 46.0,
-          "party": "Magoshi Swaranang Movement",
-          "total": 12,
-          "femaleRatio": 0.33,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 46.0
-      },
-      {
-          "male": 6,
-          "female": 6,
-          "medianAge": 53.0,
-          "party": "Reikemetse Dikgabo Party",
-          "total": 12,
-          "femaleRatio": 0.5,
-          "top10Male": 6,
-          "top10Female": 4,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 49.0
-      },
-      {
-          "male": 3,
-          "female": 8,
-          "medianAge": 38,
-          "party": "Justice And Employment Party",
-          "total": 11,
-          "femaleRatio": 0.73,
-          "top10Male": 3,
-          "top10Female": 7,
-          "top10FemaleRatio": 0.7,
-          "top10MedianAge": 36.5
-      },
-      {
-          "male": 3,
-          "female": 8,
-          "medianAge": 47,
-          "party": "The Green Party Of South Africa",
-          "total": 11,
-          "femaleRatio": 0.73,
-          "top10Male": 3,
-          "top10Female": 7,
-          "top10FemaleRatio": 0.7,
-          "top10MedianAge": 46.0
-      },
-      {
-          "male": 4,
-          "female": 6,
-          "medianAge": 46.5,
-          "party": "Uniting People First",
-          "total": 10,
-          "femaleRatio": 0.6,
-          "top10Male": 4,
-          "top10Female": 6,
-          "top10FemaleRatio": 0.6,
-          "top10MedianAge": 46.5
-      },
-      {
-          "male": 4,
-          "female": 6,
-          "medianAge": 36.0,
-          "party": "New South Africa Party",
-          "total": 10,
-          "femaleRatio": 0.6,
-          "top10Male": 4,
-          "top10Female": 6,
-          "top10FemaleRatio": 0.6,
-          "top10MedianAge": 36.0
-      },
-      {
-          "male": 7,
-          "female": 2,
-          "medianAge": 38,
-          "party": "Civic Warriors Of Maruleng",
-          "total": 9,
-          "femaleRatio": 0.22,
-          "top10Male": 7,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.22,
-          "top10MedianAge": 38
-      },
-      {
-          "male": 4,
-          "female": 5,
-          "medianAge": 36,
-          "party": "All Things Are Possible",
-          "total": 9,
-          "femaleRatio": 0.56,
-          "top10Male": 4,
-          "top10Female": 5,
-          "top10FemaleRatio": 0.56,
-          "top10MedianAge": 36
-      },
-      {
-          "male": 5,
-          "female": 3,
-          "medianAge": 51.0,
-          "party": "National Religious Freedom Party",
-          "total": 8,
-          "femaleRatio": 0.38,
-          "top10Male": 5,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.38,
-          "top10MedianAge": 51.0
-      },
-      {
-          "male": 7,
-          "female": 1,
-          "medianAge": 49.5,
-          "party": "Karoo Democratic Force",
-          "total": 8,
-          "femaleRatio": 0.12,
-          "top10Male": 7,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.12,
-          "top10MedianAge": 49.5
-      },
-      {
-          "male": 3,
-          "female": 3,
-          "medianAge": 37.5,
-          "party": "African Mantungwa Community",
-          "total": 6,
-          "femaleRatio": 0.5,
-          "top10Male": 3,
-          "top10Female": 3,
-          "top10FemaleRatio": 0.5,
-          "top10MedianAge": 37.5
-      },
-      {
-          "male": 5,
-          "female": 1,
-          "medianAge": 47.0,
-          "party": "Bolsheviks Party Of South Africa",
-          "total": 6,
-          "femaleRatio": 0.17,
-          "top10Male": 5,
-          "top10Female": 1,
-          "top10FemaleRatio": 0.17,
-          "top10MedianAge": 47.0
-      },
-      {
-          "male": 3,
-          "female": 2,
-          "medianAge": 34,
-          "party": "Dienslewerings Party",
-          "total": 5,
-          "femaleRatio": 0.4,
-          "top10Male": 3,
-          "top10Female": 2,
-          "top10FemaleRatio": 0.4,
-          "top10MedianAge": 34
-      }
+    {
+      "male": 5,
+      "female": 2,
+      "medianAge": 28,
+      "party": "GAMAGARA COMMUNITY FORUM",
+      "total": 7,
+      "femaleRatio": 0.2857142857142857,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 98,
+      "female": 122,
+      "medianAge": 41,
+      "party": "AGENCY FOR NEW AGENDA",
+      "total": 220,
+      "femaleRatio": 0.5545454545454546,
+      "wardRatio": 0,
+      "prRatio": 0.5570776255707762,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.55,
+      "top10MedianAge": 55
+    },
+    {
+      "male": 31,
+      "female": 19,
+      "medianAge": 34.5,
+      "party": "SINDAWONYE PROGRESSIVE PARTY",
+      "total": 50,
+      "femaleRatio": 0.38,
+      "wardRatio": 0.4,
+      "prRatio": 0.375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.375,
+      "top10MedianAge": 41.5
+    },
+    {
+      "male": 408,
+      "female": 277,
+      "medianAge": 51,
+      "party": "GOOD",
+      "total": 685,
+      "femaleRatio": 0.4043795620437956,
+      "wardRatio": 0.3880597014925373,
+      "prRatio": 0.40834845735027225,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.397212543554007,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 20,
+      "female": 14,
+      "medianAge": 52,
+      "party": "DECENT POLITICAL PARTY",
+      "total": 34,
+      "femaleRatio": 0.4117647058823529,
+      "wardRatio": 0,
+      "prRatio": 0.4117647058823529,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 13,
+      "female": 1,
+      "medianAge": 43.5,
+      "party": "WITZENBERG AKSIE",
+      "total": 14,
+      "femaleRatio": 0.07142857142857142,
+      "wardRatio": 0.1111111111111111,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 52
+    },
+    {
+      "male": 6,
+      "female": 4,
+      "medianAge": 40.5,
+      "party": "INDEPENDENT PARTY",
+      "total": 10,
+      "femaleRatio": 0.4,
+      "wardRatio": 0.5,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 44.5
+    },
+    {
+      "male": 6,
+      "female": 4,
+      "medianAge": 38.5,
+      "party": "MAKANA INDEPENDENT NEW DEAL",
+      "total": 10,
+      "femaleRatio": 0.4,
+      "wardRatio": 0,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 38.5
+    },
+    {
+      "male": 12,
+      "female": 5,
+      "medianAge": 39,
+      "party": "NATIONAL ECONOMIC FIGHTERS",
+      "total": 17,
+      "femaleRatio": 0.29411764705882354,
+      "wardRatio": 0,
+      "prRatio": 0.38461538461538464,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.38461538461538464,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 47,
+      "female": 24,
+      "medianAge": 37,
+      "party": "REPUBLICAN CONFERENCE OF TSHWANE",
+      "total": 71,
+      "femaleRatio": 0.3380281690140845,
+      "wardRatio": 0.5,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 38.5
+    },
+    {
+      "male": 5,
+      "female": 2,
+      "medianAge": 43,
+      "party": "METSIMAHOLO PROGRESSIVE PEOPLE FORUM",
+      "total": 7,
+      "femaleRatio": 0.2857142857142857,
+      "wardRatio": 0,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2857142857142857,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 2,
+      "female": 0,
+      "medianAge": 32,
+      "party": "AFRICAN MANDATE CONGRESS",
+      "total": 2,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 32
+    },
+    {
+      "male": 1413,
+      "female": 739,
+      "medianAge": 39.5,
+      "party": "INKATHA FREEDOM PARTY",
+      "total": 2152,
+      "femaleRatio": 0.3434014869888476,
+      "wardRatio": 0.263573543928924,
+      "prRatio": 0.41439859525899914,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.41185410334346506,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 3,
+      "female": 4,
+      "medianAge": 46,
+      "party": "INGUBO YESKHETHU PARTY",
+      "total": 7,
+      "femaleRatio": 0.5714285714285714,
+      "wardRatio": 0,
+      "prRatio": 0.5714285714285714,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5714285714285714,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 40,
+      "female": 49,
+      "medianAge": 47,
+      "party": "SOUTH AFRICAN ROYAL KINGDOMS ORGANIZATION",
+      "total": 89,
+      "femaleRatio": 0.550561797752809,
+      "wardRatio": 0.8,
+      "prRatio": 0.5189873417721519,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5405405405405406,
+      "top10MedianAge": 33.5
+    },
+    {
+      "male": 49,
+      "female": 43,
+      "medianAge": 53,
+      "party": "ACADEMIC CONGRESS UNION",
+      "total": 92,
+      "femaleRatio": 0.4673913043478261,
+      "wardRatio": 0.625,
+      "prRatio": 0.4523809523809524,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4782608695652174,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 6,
+      "female": 3,
+      "medianAge": 47,
+      "party": "DIKGATLONG INDEPENDED FORUM",
+      "total": 9,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 38
+    },
+    {
+      "male": 11,
+      "female": 15,
+      "medianAge": 45.5,
+      "party": "MOVEMENT DEMOCRATIC CONGRESS",
+      "total": 26,
+      "femaleRatio": 0.5769230769230769,
+      "wardRatio": 0,
+      "prRatio": 0.6,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.45454545454545453,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 4,
+      "female": 6,
+      "medianAge": 25.5,
+      "party": "PONGOLA PEOPLE'S PARTY",
+      "total": 10,
+      "femaleRatio": 0.6,
+      "wardRatio": 0.6,
+      "prRatio": 0.6,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 122
+    },
+    {
+      "male": 14,
+      "female": 7,
+      "medianAge": 51,
+      "party": "IQELA LENTSANGO - DAGGA PARTY",
+      "total": 21,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3076923076923077,
+      "top10MedianAge": 50
+    },
+    {
+      "male": 11,
+      "female": 6,
+      "medianAge": 31,
+      "party": "DEMOCRATIC NEW CIVIC ASSOCIATION",
+      "total": 17,
+      "femaleRatio": 0.35294117647058826,
+      "wardRatio": 0.2857142857142857,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 42.5
+    },
+    {
+      "male": 4,
+      "female": 0,
+      "medianAge": 28.5,
+      "party": "UNEMPLOYMENT MOVEMENT SA",
+      "total": 4,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 28.5
+    },
+    {
+      "male": 128,
+      "female": 81,
+      "medianAge": 59,
+      "party": "INDEPENDENT CIVIC ORGANISATION OF SOUTH AFRICA",
+      "total": 209,
+      "femaleRatio": 0.3875598086124402,
+      "wardRatio": 0.39215686274509803,
+      "prRatio": 0.3860759493670886,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3389830508474576,
+      "top10MedianAge": 35
+    },
+    {
+      "male": 10,
+      "female": 10,
+      "medianAge": 40,
+      "party": "SIYATHEMBA COMMUNITY MOVEMENT",
+      "total": 20,
+      "femaleRatio": 0.5,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.5714285714285714,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5714285714285714,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 42,
+      "female": 28,
+      "medianAge": 49,
+      "party": "XIMOKO PARTY",
+      "total": 70,
+      "femaleRatio": 0.4,
+      "wardRatio": 0.4444444444444444,
+      "prRatio": 0.38461538461538464,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.35555555555555557,
+      "top10MedianAge": 63
+    },
+    {
+      "male": 4,
+      "female": 1,
+      "medianAge": 56,
+      "party": "INDEPENDENT PEOPLE'S PARTY",
+      "total": 5,
+      "femaleRatio": 0.2,
+      "wardRatio": 0,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 60
+    },
+    {
+      "male": 26,
+      "female": 20,
+      "medianAge": 61,
+      "party": "BREEDEVALLEI ONAFHANKLIK",
+      "total": 46,
+      "femaleRatio": 0.43478260869565216,
+      "wardRatio": 0.4,
+      "prRatio": 0.46153846153846156,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.47619047619047616,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 16,
+      "female": 19,
+      "medianAge": 33,
+      "party": "AFRICAN FREEDOM PARTY",
+      "total": 35,
+      "femaleRatio": 0.5428571428571428,
+      "wardRatio": 1,
+      "prRatio": 0.5151515151515151,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 6,
+      "female": 0,
+      "medianAge": 46.5,
+      "party": "LANGERBERG INDEPENDENT PARTY",
+      "total": 6,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 50.5
+    },
+    {
+      "male": 13,
+      "female": 7,
+      "medianAge": 48,
+      "party": "ECONOMIC LIBERATION CONGRESS",
+      "total": 20,
+      "femaleRatio": 0.35,
+      "wardRatio": 0.14285714285714285,
+      "prRatio": 0.46153846153846156,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.46153846153846156,
+      "top10MedianAge": 53
+    },
+    {
+      "male": 9,
+      "female": 7,
+      "medianAge": 39,
+      "party": "DENNILTON RESIDENTS ASSOCIATION",
+      "total": 16,
+      "femaleRatio": 0.4375,
+      "wardRatio": 0.25,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 11,
+      "female": 3,
+      "medianAge": 45,
+      "party": "SOCIALIST ECONOMIC FREEDOM MOVEMENT",
+      "total": 14,
+      "femaleRatio": 0.21428571428571427,
+      "wardRatio": 0.16666666666666666,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 14,
+      "female": 10,
+      "medianAge": 43,
+      "party": "CHANGE",
+      "total": 24,
+      "femaleRatio": 0.4166666666666667,
+      "wardRatio": 0,
+      "prRatio": 0.4166666666666667,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.35,
+      "top10MedianAge": 41.5
+    },
+    {
+      "male": 10,
+      "female": 6,
+      "medianAge": 36.5,
+      "party": "KAROO GEMEENSKAP PARTY",
+      "total": 16,
+      "femaleRatio": 0.375,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.38461538461538464,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.38461538461538464,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 49,
+      "female": 21,
+      "medianAge": 42.5,
+      "party": "MAPSIXTEEN CIVIC MOVEMENT",
+      "total": 70,
+      "femaleRatio": 0.3,
+      "wardRatio": 0.22857142857142856,
+      "prRatio": 0.37142857142857144,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 29,
+      "female": 10,
+      "medianAge": 40,
+      "party": "SAVE MADIBENG",
+      "total": 39,
+      "femaleRatio": 0.2564102564102564,
+      "wardRatio": 0.23076923076923078,
+      "prRatio": 0.3076923076923077,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3076923076923077,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 61,
+      "female": 51,
+      "medianAge": 36,
+      "party": "POWER OF AFRICANS UNITY",
+      "total": 112,
+      "femaleRatio": 0.45535714285714285,
+      "wardRatio": 0.5,
+      "prRatio": 0.4358974358974359,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.39622641509433965,
+      "top10MedianAge": 52
+    },
+    {
+      "male": 26,
+      "female": 18,
+      "medianAge": 27,
+      "party": "NATIONAL DEMOCRATIC CONVENTION",
+      "total": 44,
+      "femaleRatio": 0.4090909090909091,
+      "wardRatio": 0,
+      "prRatio": 0.43902439024390244,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5416666666666666,
+      "top10MedianAge": 28.5
+    },
+    {
+      "male": 3,
+      "female": 1,
+      "medianAge": 48,
+      "party": "ADVIESKANTOOR",
+      "total": 4,
+      "femaleRatio": 0.25,
+      "wardRatio": 0,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 13,
+      "female": 5,
+      "medianAge": 35.5,
+      "party": "LEPHALALE RESIDENTS PARTY",
+      "total": 18,
+      "femaleRatio": 0.2777777777777778,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.26666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 36
+    },
+    {
+      "male": 2,
+      "female": 4,
+      "medianAge": 49.5,
+      "party": "SOUTH AFRICAN POLITICAL ASSOCIATION",
+      "total": 6,
+      "femaleRatio": 0.6666666666666666,
+      "wardRatio": 1,
+      "prRatio": 0.6,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 32,
+      "female": 19,
+      "medianAge": 58,
+      "party": "PEOPLE'S DEMOCRATIC MOVEMENT",
+      "total": 51,
+      "femaleRatio": 0.37254901960784315,
+      "wardRatio": 0.42857142857142855,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.21428571428571427,
+      "top10MedianAge": 50.5
+    },
+    {
+      "male": 5,
+      "female": 0,
+      "medianAge": 59,
+      "party": "KHOI-SAN HEAVENLY PARTY",
+      "total": 5,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 59
+    },
+    {
+      "male": 18,
+      "female": 36,
+      "medianAge": 36.5,
+      "party": "AFRICAN DEMOCRATS",
+      "total": 54,
+      "femaleRatio": 0.6666666666666666,
+      "wardRatio": 0.8888888888888888,
+      "prRatio": 0.5555555555555556,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5625,
+      "top10MedianAge": 42.5
+    },
+    {
+      "male": 44,
+      "female": 46,
+      "medianAge": 49.5,
+      "party": "ADVANCED DYNAMIC ALLIANCE",
+      "total": 90,
+      "femaleRatio": 0.5111111111111111,
+      "wardRatio": 0,
+      "prRatio": 0.5111111111111111,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 45.5
+    },
+    {
+      "male": 13,
+      "female": 16,
+      "medianAge": 39,
+      "party": "SOUTH AFRICA VUKA MOVEMENT",
+      "total": 29,
+      "femaleRatio": 0.5517241379310345,
+      "wardRatio": 0.5625,
+      "prRatio": 0.5384615384615384,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5384615384615384,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 34,
+      "female": 42,
+      "medianAge": 30,
+      "party": "THE NATIONALS OF SOUTH AFRICA",
+      "total": 76,
+      "femaleRatio": 0.5526315789473685,
+      "wardRatio": 0,
+      "prRatio": 0.5675675675675675,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 15,
+      "female": 8,
+      "medianAge": 32,
+      "party": "TRULY ALLIANCE",
+      "total": 23,
+      "femaleRatio": 0.34782608695652173,
+      "wardRatio": 0.5,
+      "prRatio": 0.26666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.1,
+      "top10MedianAge": 53
+    },
+    {
+      "male": 90,
+      "female": 67,
+      "medianAge": 48,
+      "party": "INDEPENDENT CITIZENS MOVEMENT",
+      "total": 157,
+      "femaleRatio": 0.4267515923566879,
+      "wardRatio": 0.4065934065934066,
+      "prRatio": 0.45454545454545453,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 29.5
+    },
+    {
+      "male": 46,
+      "female": 12,
+      "medianAge": 36.5,
+      "party": "DEMOCRATIC COMMUNITY MOVEMENT",
+      "total": 58,
+      "femaleRatio": 0.20689655172413793,
+      "wardRatio": 0.15625,
+      "prRatio": 0.2692307692307692,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.1,
+      "top10MedianAge": 55.5
+    },
+    {
+      "male": 7,
+      "female": 4,
+      "medianAge": 51,
+      "party": "AFRICAN BASIC REPUBLICANS",
+      "total": 11,
+      "femaleRatio": 0.36363636363636365,
+      "wardRatio": 0,
+      "prRatio": 0.36363636363636365,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.36363636363636365,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 40,
+      "female": 32,
+      "medianAge": 57,
+      "party": "CIVIC WARRIORS",
+      "total": 72,
+      "femaleRatio": 0.4444444444444444,
+      "wardRatio": 0.36363636363636365,
+      "prRatio": 0.45901639344262296,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.34285714285714286,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 4,
+      "female": 2,
+      "medianAge": 54,
+      "party": "BITOU CONCERNED RESIDENTS",
+      "total": 6,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 1,
+      "prRatio": 0.2,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 57
+    },
+    {
+      "male": 8,
+      "female": 6,
+      "medianAge": 57,
+      "party": "DEMOCRATIC LIBERAL CONGRESS",
+      "total": 14,
+      "femaleRatio": 0.42857142857142855,
+      "wardRatio": 0,
+      "prRatio": 0.42857142857142855,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 53.5
+    },
+    {
+      "male": 28,
+      "female": 25,
+      "medianAge": 59,
+      "party": "SOUTH AFRICA MY HOME RESIDENTS ASSOCIATION",
+      "total": 53,
+      "femaleRatio": 0.4716981132075472,
+      "wardRatio": 0.3888888888888889,
+      "prRatio": 0.5142857142857142,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 47.5
+    },
+    {
+      "male": 40,
+      "female": 25,
+      "medianAge": 27,
+      "party": "UNITED CULTURAL MOVEMENT",
+      "total": 65,
+      "femaleRatio": 0.38461538461538464,
+      "wardRatio": 0.37209302325581395,
+      "prRatio": 0.4090909090909091,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4090909090909091,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 521,
+      "female": 419,
+      "medianAge": 49.5,
+      "party": "CONGRESS  OF THE PEOPLE",
+      "total": 940,
+      "femaleRatio": 0.44574468085106383,
+      "wardRatio": 0.43119266055045874,
+      "prRatio": 0.4535073409461664,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.46357615894039733,
+      "top10MedianAge": 29
+    },
+    {
+      "male": 10,
+      "female": 3,
+      "medianAge": 49,
+      "party": "AFRICAN ISLAMIC MOVEMENT",
+      "total": 13,
+      "femaleRatio": 0.23076923076923078,
+      "wardRatio": 0,
+      "prRatio": 0.23076923076923078,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 38
+    },
+    {
+      "male": 12,
+      "female": 5,
+      "medianAge": 37,
+      "party": "NALA COMMUNITY FORUM",
+      "total": 17,
+      "femaleRatio": 0.29411764705882354,
+      "wardRatio": 0.375,
+      "prRatio": 0.2222222222222222,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2222222222222222,
+      "top10MedianAge": 39
+    },
+    {
+      "male": 25,
+      "female": 14,
+      "medianAge": 62,
+      "party": "AFRICA'S NEW DAWN",
+      "total": 39,
+      "femaleRatio": 0.358974358974359,
+      "wardRatio": 0.3125,
+      "prRatio": 0.391304347826087,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.375,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 10,
+      "female": 9,
+      "medianAge": 29,
+      "party": "US THE PEOPLE",
+      "total": 19,
+      "femaleRatio": 0.47368421052631576,
+      "wardRatio": 0.8,
+      "prRatio": 0.35714285714285715,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 26
+    },
+    {
+      "male": 7,
+      "female": 4,
+      "medianAge": 53,
+      "party": "SAVE TSANTSABANE COALITION",
+      "total": 11,
+      "femaleRatio": 0.36363636363636365,
+      "wardRatio": 0,
+      "prRatio": 0.36363636363636365,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 6,
+      "female": 2,
+      "medianAge": 45.5,
+      "party": "KNYSNA UNITY CONGRESS",
+      "total": 8,
+      "femaleRatio": 0.25,
+      "wardRatio": 0,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 45.5
+    },
+    {
+      "male": 13,
+      "female": 4,
+      "medianAge": 26,
+      "party": "VAAL ALTERNATIVE ALLIANCE LEKGOTLA",
+      "total": 17,
+      "femaleRatio": 0.23529411764705882,
+      "wardRatio": 0,
+      "prRatio": 0.23529411764705882,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2727272727272727,
+      "top10MedianAge": 28
+    },
+    {
+      "male": 9,
+      "female": 3,
+      "medianAge": 55.5,
+      "party": "CAPE MUSLIM CONGRESS",
+      "total": 12,
+      "femaleRatio": 0.25,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.2222222222222222,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2222222222222222,
+      "top10MedianAge": 55
+    },
+    {
+      "male": 9,
+      "female": 9,
+      "medianAge": 41.5,
+      "party": "CAPRICORN INDEPENDENT COMMUNITY ACTIVISTS FORUM",
+      "total": 18,
+      "femaleRatio": 0.5,
+      "wardRatio": 0.5,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 43.5
+    },
+    {
+      "male": 6,
+      "female": 3,
+      "medianAge": 29,
+      "party": "PHOKWANE SERVICE DELIVERY FORUM",
+      "total": 9,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0.25,
+      "prRatio": 1,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 1,
+      "top10MedianAge": 24
+    },
+    {
+      "male": 884,
+      "female": 677,
+      "medianAge": 56,
+      "party": "PATRIOTIC ALLIANCE",
+      "total": 1561,
+      "femaleRatio": 0.4336963484945548,
+      "wardRatio": 0.3983606557377049,
+      "prRatio": 0.45636172450052576,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4185303514376997,
+      "top10MedianAge": 52
+    },
+    {
+      "male": 9,
+      "female": 2,
+      "medianAge": 37,
+      "party": "DEMOCRATIC PEOPLE'S CONGRESS",
+      "total": 11,
+      "femaleRatio": 0.18181818181818182,
+      "wardRatio": 0,
+      "prRatio": 0.18181818181818182,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.18181818181818182,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 7,
+      "female": 2,
+      "medianAge": 69,
+      "party": "CHRISTIAN DEMOCRATIC PARTY",
+      "total": 9,
+      "femaleRatio": 0.2222222222222222,
+      "wardRatio": 0,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 65.5
+    },
+    {
+      "male": 1,
+      "female": 1,
+      "medianAge": 38,
+      "party": "SOUTH AFRICAN PEOPLES MOVEMENT",
+      "total": 2,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 38
+    },
+    {
+      "male": 224,
+      "female": 202,
+      "medianAge": 46.5,
+      "party": "SPECTRUM NATIONAL PARTY",
+      "total": 426,
+      "femaleRatio": 0.47417840375586856,
+      "wardRatio": 0.504424778761062,
+      "prRatio": 0.46325878594249204,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.436046511627907,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 9,
+      "female": 4,
+      "medianAge": 37,
+      "party": "INTERNATIONAL PARTY",
+      "total": 13,
+      "femaleRatio": 0.3076923076923077,
+      "wardRatio": 0,
+      "prRatio": 0.3076923076923077,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3076923076923077,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 33,
+      "female": 26,
+      "medianAge": 41,
+      "party": "ABANTU INTEGRITY MOVEMENT",
+      "total": 59,
+      "femaleRatio": 0.4406779661016949,
+      "wardRatio": 0.43103448275862066,
+      "prRatio": 1,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 1,
+      "top10MedianAge": 29
+    },
+    {
+      "male": 4,
+      "female": 0,
+      "medianAge": 46.5,
+      "party": "MANGAUNG COMMUNITY FORUM",
+      "total": 4,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 46.5
+    },
+    {
+      "male": 53,
+      "female": 60,
+      "medianAge": 58,
+      "party": "GOD SAVE AFRICA",
+      "total": 113,
+      "femaleRatio": 0.5309734513274337,
+      "wardRatio": 0.47368421052631576,
+      "prRatio": 0.5425531914893617,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5256410256410257,
+      "top10MedianAge": 60
+    },
+    {
+      "male": 425,
+      "female": 448,
+      "medianAge": 36,
+      "party": "AFRICAN PEOPLE'S CONVENTION",
+      "total": 873,
+      "femaleRatio": 0.5131729667812142,
+      "wardRatio": 0.5189393939393939,
+      "prRatio": 0.5106732348111659,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.46539379474940334,
+      "top10MedianAge": 55
+    },
+    {
+      "male": 112,
+      "female": 59,
+      "medianAge": 49,
+      "party": "ACTIVISTS MOVEMENT OF SOUTH AFRICA",
+      "total": 171,
+      "femaleRatio": 0.34502923976608185,
+      "wardRatio": 0.3,
+      "prRatio": 0.3509933774834437,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.34285714285714286,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 4,
+      "female": 5,
+      "medianAge": 43,
+      "party": "KNYSNA INDEPENDENT MOVEMENT",
+      "total": 9,
+      "femaleRatio": 0.5555555555555556,
+      "wardRatio": 0,
+      "prRatio": 0.5555555555555556,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5555555555555556,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 1,
+      "female": 2,
+      "medianAge": 30,
+      "party": "CONGREGATIONAL CHRISTIAN UNITY",
+      "total": 3,
+      "femaleRatio": 0.6666666666666666,
+      "wardRatio": 0,
+      "prRatio": 0.6666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6666666666666666,
+      "top10MedianAge": 30
+    },
+    {
+      "male": 28,
+      "female": 45,
+      "medianAge": 65,
+      "party": "ECONOMIC EMANCIPATION FORUM",
+      "total": 73,
+      "femaleRatio": 0.6164383561643836,
+      "wardRatio": 0.56,
+      "prRatio": 0.6458333333333334,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5161290322580645,
+      "top10MedianAge": 57
+    },
+    {
+      "male": 10,
+      "female": 3,
+      "medianAge": 62,
+      "party": "TRANSFORMING DRAKENSTEIN COMMUNITY FORUM",
+      "total": 13,
+      "femaleRatio": 0.23076923076923078,
+      "wardRatio": 0,
+      "prRatio": 0.23076923076923078,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 52.5
+    },
+    {
+      "male": 183,
+      "female": 142,
+      "medianAge": 38,
+      "party": "UNITED INDEPENDENT MOVEMENT",
+      "total": 325,
+      "femaleRatio": 0.4369230769230769,
+      "wardRatio": 0.3225806451612903,
+      "prRatio": 0.4489795918367347,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.35714285714285715,
+      "top10MedianAge": 48.5
+    },
+    {
+      "male": 24,
+      "female": 14,
+      "medianAge": 28,
+      "party": "MALAMULELE COMMUNITY ASSOCIATION",
+      "total": 38,
+      "femaleRatio": 0.3684210526315789,
+      "wardRatio": 0,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.45454545454545453,
+      "top10MedianAge": 31
+    },
+    {
+      "male": 15,
+      "female": 9,
+      "medianAge": 48.5,
+      "party": "UNITED FRONT OF THE EASTERN CAPE",
+      "total": 24,
+      "femaleRatio": 0.375,
+      "wardRatio": 0.3888888888888889,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 38.5
+    },
+    {
+      "male": 159,
+      "female": 101,
+      "medianAge": 36.5,
+      "party": "INDEPENDENT SOUTH AFRICAN NATIONAL CIVIC ORGANISATION",
+      "total": 260,
+      "femaleRatio": 0.38846153846153847,
+      "wardRatio": 0.3880597014925373,
+      "prRatio": 0.38860103626943004,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.36419753086419754,
+      "top10MedianAge": 34
+    },
+    {
+      "male": 19,
+      "female": 12,
+      "medianAge": 53,
+      "party": "ACTIVE UNITED FRONT",
+      "total": 31,
+      "femaleRatio": 0.3870967741935484,
+      "wardRatio": 0,
+      "prRatio": 0.3870967741935484,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.38461538461538464,
+      "top10MedianAge": 43.5
+    },
+    {
+      "male": 2763,
+      "female": 1806,
+      "medianAge": 34,
+      "party": "ECONOMIC FREEDOM FIGHTERS",
+      "total": 4569,
+      "femaleRatio": 0.3952724885095207,
+      "wardRatio": 0.39198888631627693,
+      "prRatio": 0.452,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.452,
+      "top10MedianAge": 35
+    },
+    {
+      "male": 9,
+      "female": 8,
+      "medianAge": 30,
+      "party": "BATHO BA QETILE",
+      "total": 17,
+      "femaleRatio": 0.47058823529411764,
+      "wardRatio": 0.4666666666666667,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 40
+    },
+    {
+      "male": 7,
+      "female": 9,
+      "medianAge": 33.5,
+      "party": "BATHO PELE PARTY",
+      "total": 16,
+      "femaleRatio": 0.5625,
+      "wardRatio": 0,
+      "prRatio": 0.5625,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5625,
+      "top10MedianAge": 33.5
+    },
+    {
+      "male": 45,
+      "female": 46,
+      "medianAge": 44,
+      "party": "MAGOSHI SWARANANG MOVEMENT",
+      "total": 91,
+      "femaleRatio": 0.5054945054945055,
+      "wardRatio": 0.5526315789473685,
+      "prRatio": 0.26666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.23076923076923078,
+      "top10MedianAge": 57
+    },
+    {
+      "male": 52,
+      "female": 50,
+      "medianAge": 42,
+      "party": "KINGDOM COVENANT DEMOCRATIC PARTY",
+      "total": 102,
+      "femaleRatio": 0.49019607843137253,
+      "wardRatio": 0.5555555555555556,
+      "prRatio": 0.47619047619047616,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4745762711864407,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 783,
+      "female": 554,
+      "medianAge": 26,
+      "party": "AFRICAN CHRISTIAN DEMOCRATIC PARTY",
+      "total": 1337,
+      "femaleRatio": 0.4143605086013463,
+      "wardRatio": 0.41642228739002934,
+      "prRatio": 0.41365461847389556,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4195906432748538,
+      "top10MedianAge": 48.5
+    },
+    {
+      "male": 3,
+      "female": 0,
+      "medianAge": 40,
+      "party": "REVOLUTIONARY DEMOCRATIC PATRIOTS",
+      "total": 3,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 40
+    },
+    {
+      "male": 3,
+      "female": 1,
+      "medianAge": 38.5,
+      "party": "UMNOTHO DEMOCRATIC FRONT",
+      "total": 4,
+      "femaleRatio": 0.25,
+      "wardRatio": 0,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 38.5
+    },
+    {
+      "male": 15,
+      "female": 39,
+      "medianAge": 48.5,
+      "party": "ROYAL LOYAL PROGRESS",
+      "total": 54,
+      "femaleRatio": 0.7222222222222222,
+      "wardRatio": 0.6363636363636364,
+      "prRatio": 0.7441860465116279,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6774193548387096,
+      "top10MedianAge": 40
+    },
+    {
+      "male": 49,
+      "female": 52,
+      "medianAge": 30,
+      "party": "AFRICAN MANTUNGWA COMMUNITY",
+      "total": 101,
+      "femaleRatio": 0.5148514851485149,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.5204081632653061,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5268817204301075,
+      "top10MedianAge": 31
+    },
+    {
+      "male": 6,
+      "female": 8,
+      "medianAge": 51,
+      "party": "MORETELE PEOPLES PARTY",
+      "total": 14,
+      "femaleRatio": 0.5714285714285714,
+      "wardRatio": 0,
+      "prRatio": 0.5714285714285714,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5714285714285714,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 2,
+      "female": 8,
+      "medianAge": 36.5,
+      "party": "GAZA YOUTH REVOLUTION",
+      "total": 10,
+      "femaleRatio": 0.8,
+      "wardRatio": 0.8,
+      "prRatio": 0.8,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.8,
+      "top10MedianAge": 28
+    },
+    {
+      "male": 5,
+      "female": 3,
+      "medianAge": 26.5,
+      "party": "TRANSFORMATIVE YOUTH MOVEMENT",
+      "total": 8,
+      "femaleRatio": 0.375,
+      "wardRatio": 1,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2857142857142857,
+      "top10MedianAge": 26
+    },
+    {
+      "male": 167,
+      "female": 89,
+      "medianAge": 49,
+      "party": "AL JAMA-AH",
+      "total": 256,
+      "femaleRatio": 0.34765625,
+      "wardRatio": 0.3723404255319149,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.33620689655172414,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 5,
+      "female": 5,
+      "medianAge": 36.5,
+      "party": "SHOSHOLOZA PROGRESSIVE PARTY",
+      "total": 10,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4444444444444444,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 6,
+      "female": 21,
+      "medianAge": 51,
+      "party": "IKHWEZI POLITICAL MOVEMENT",
+      "total": 27,
+      "femaleRatio": 0.7777777777777778,
+      "wardRatio": 0.8333333333333334,
+      "prRatio": 0.7619047619047619,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7647058823529411,
+      "top10MedianAge": 32
+    },
+    {
+      "male": 39,
+      "female": 35,
+      "medianAge": 46,
+      "party": "PEOPLE'S REVOLUTIONARY MOVEMENT",
+      "total": 74,
+      "femaleRatio": 0.47297297297297297,
+      "wardRatio": 0.475,
+      "prRatio": 0.47058823529411764,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.42857142857142855,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 238,
+      "female": 118,
+      "medianAge": 50,
+      "party": "AZANIAN PEOPLE'S ORGANISATION",
+      "total": 356,
+      "femaleRatio": 0.33146067415730335,
+      "wardRatio": 0.3582089552238806,
+      "prRatio": 0.3153153153153153,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3005181347150259,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 15,
+      "female": 10,
+      "medianAge": 55,
+      "party": "PROPHETIC MOVEMENT ARMY",
+      "total": 25,
+      "femaleRatio": 0.4,
+      "wardRatio": 0,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4444444444444444,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 33,
+      "female": 22,
+      "medianAge": 48,
+      "party": "NATIONAL PEOPLES AMBASSADORS",
+      "total": 55,
+      "femaleRatio": 0.4,
+      "wardRatio": 0.44,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 17,
+      "female": 22,
+      "medianAge": 29,
+      "party": "THABAZIMBI RESIDENTS ASSOCIATION",
+      "total": 39,
+      "femaleRatio": 0.5641025641025641,
+      "wardRatio": 0.5454545454545454,
+      "prRatio": 0.5714285714285714,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.55,
+      "top10MedianAge": 51.5
+    },
+    {
+      "male": 25,
+      "female": 24,
+      "medianAge": 48,
+      "party": "GAZA MOVEMENT FOR CHANGE",
+      "total": 49,
+      "femaleRatio": 0.4897959183673469,
+      "wardRatio": 0.46153846153846156,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2777777777777778,
+      "top10MedianAge": 56.5
+    },
+    {
+      "male": 13,
+      "female": 9,
+      "medianAge": 63.5,
+      "party": "AFRICAN COVENANT",
+      "total": 22,
+      "femaleRatio": 0.4090909090909091,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.42105263157894735,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.375,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 20,
+      "female": 4,
+      "medianAge": 41,
+      "party": "LEKWA COMMUNITY FORUM",
+      "total": 24,
+      "femaleRatio": 0.16666666666666666,
+      "wardRatio": 0.07142857142857142,
+      "prRatio": 0.3,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 36
+    },
+    {
+      "male": 33,
+      "female": 26,
+      "medianAge": 34,
+      "party": "AFRICAN VOICE PROGRESSIVE PARTY",
+      "total": 59,
+      "femaleRatio": 0.4406779661016949,
+      "wardRatio": 0.3181818181818182,
+      "prRatio": 0.5135135135135135,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4642857142857143,
+      "top10MedianAge": 32
+    },
+    {
+      "male": 236,
+      "female": 210,
+      "medianAge": 37,
+      "party": "UNITED CHRISTIAN DEMOCRATIC PARTY",
+      "total": 446,
+      "femaleRatio": 0.47085201793721976,
+      "wardRatio": 0.41509433962264153,
+      "prRatio": 0.48823529411764705,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.49407114624505927,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 8,
+      "female": 5,
+      "medianAge": 48,
+      "party": "EQUAL RIGHTS FOR ALL",
+      "total": 13,
+      "femaleRatio": 0.38461538461538464,
+      "wardRatio": 0.375,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 36,
+      "female": 18,
+      "medianAge": 31.5,
+      "party": "AFRICAN AMBASSADORS OF SOUTH AFRICA",
+      "total": 54,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0.35714285714285715,
+      "prRatio": 0.325,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 69,
+      "female": 44,
+      "medianAge": 46,
+      "party": "TSOGANG CIVIC MOVEMENT",
+      "total": 113,
+      "femaleRatio": 0.3893805309734513,
+      "wardRatio": 0.34,
+      "prRatio": 0.42857142857142855,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.45,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 44,
+      "female": 7,
+      "medianAge": 65,
+      "party": "MOPANI INDEPENDENT MOVEMENT",
+      "total": 51,
+      "femaleRatio": 0.13725490196078433,
+      "wardRatio": 0,
+      "prRatio": 0.175,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.17857142857142858,
+      "top10MedianAge": 50.5
+    },
+    {
+      "male": 11,
+      "female": 11,
+      "medianAge": 37,
+      "party": "BANA BA THARI",
+      "total": 22,
+      "femaleRatio": 0.5,
+      "wardRatio": 0.5384615384615384,
+      "prRatio": 0.4444444444444444,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4444444444444444,
+      "top10MedianAge": 32
+    },
+    {
+      "male": 166,
+      "female": 122,
+      "medianAge": 47,
+      "party": "AFRICA RESTORATION ALLIANCE",
+      "total": 288,
+      "femaleRatio": 0.4236111111111111,
+      "wardRatio": 0.453125,
+      "prRatio": 0.41517857142857145,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.37748344370860926,
+      "top10MedianAge": 31
+    },
+    {
+      "male": 19,
+      "female": 17,
+      "medianAge": 42.5,
+      "party": "MIDDELBURG AND HENDRINA RESIDENTS FRONT",
+      "total": 36,
+      "femaleRatio": 0.4722222222222222,
+      "wardRatio": 0.3684210526315789,
+      "prRatio": 0.5882352941176471,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5555555555555556,
+      "top10MedianAge": 68
+    },
+    {
+      "male": 640,
+      "female": 518,
+      "medianAge": 42.5,
+      "party": "ABANTU BATHO CONGRESS",
+      "total": 1158,
+      "femaleRatio": 0.4473229706390328,
+      "wardRatio": 0.4,
+      "prRatio": 0.4785100286532951,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.46292585170340683,
+      "top10MedianAge": 40
+    },
+    {
+      "male": 11,
+      "female": 10,
+      "medianAge": 46,
+      "party": "METSIMAHOLO COMMUNITY ASSOCIATION",
+      "total": 21,
+      "femaleRatio": 0.47619047619047616,
+      "wardRatio": 0.45,
+      "prRatio": 1,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 1,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 24,
+      "female": 28,
+      "medianAge": 42.5,
+      "party": "CONCERNED DRAKENSTEIN RESIDENTS",
+      "total": 52,
+      "femaleRatio": 0.5384615384615384,
+      "wardRatio": 0.5294117647058824,
+      "prRatio": 0.5428571428571428,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 52
+    },
+    {
+      "male": 5,
+      "female": 2,
+      "medianAge": 46,
+      "party": "DEMOCRATIC LABOUR PARTY",
+      "total": 7,
+      "femaleRatio": 0.2857142857142857,
+      "wardRatio": 0,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2857142857142857,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 8,
+      "female": 3,
+      "medianAge": 57,
+      "party": "SERVICE DELIVERY MOVEMENT",
+      "total": 11,
+      "femaleRatio": 0.2727272727272727,
+      "wardRatio": 0.2857142857142857,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 49.5
+    },
+    {
+      "male": 2935,
+      "female": 1846,
+      "medianAge": 51,
+      "party": "DEMOCRATIC ALLIANCE",
+      "total": 4781,
+      "femaleRatio": 0.3861116921146204,
+      "wardRatio": 0.40978398983481573,
+      "prRatio": 0.37449329591518554,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3614058355437666,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 10,
+      "female": 6,
+      "medianAge": 46.5,
+      "party": "KHOISAN UNITED MOVEMENT",
+      "total": 16,
+      "femaleRatio": 0.375,
+      "wardRatio": 0,
+      "prRatio": 0.375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 57
+    },
+    {
+      "male": 38,
+      "female": 40,
+      "medianAge": 52,
+      "party": "ARUSHA ECONOMIC COALITION",
+      "total": 78,
+      "femaleRatio": 0.5128205128205128,
+      "wardRatio": 0.42857142857142855,
+      "prRatio": 0.5211267605633803,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5757575757575758,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 27,
+      "female": 33,
+      "medianAge": 30.5,
+      "party": "SOCIALIST REVOLUTIONARY WORKERS PARTY",
+      "total": 60,
+      "femaleRatio": 0.55,
+      "wardRatio": 0.6,
+      "prRatio": 0.5454545454545454,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5277777777777778,
+      "top10MedianAge": 60
+    },
+    {
+      "male": 5,
+      "female": 2,
+      "medianAge": 23,
+      "party": "THE PEOPLE'S AGENDA",
+      "total": 7,
+      "femaleRatio": 0.2857142857142857,
+      "wardRatio": 0,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2857142857142857,
+      "top10MedianAge": 23
+    },
+    {
+      "male": 19,
+      "female": 14,
+      "medianAge": 50,
+      "party": "PATRIOTIC FRONT OF AZANIA",
+      "total": 33,
+      "femaleRatio": 0.42424242424242425,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.4583333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4090909090909091,
+      "top10MedianAge": 38.5
+    },
+    {
+      "male": 86,
+      "female": 57,
+      "medianAge": 55,
+      "party": "CAPE COLOURED CONGRESS",
+      "total": 143,
+      "femaleRatio": 0.3986013986013986,
+      "wardRatio": 0.3114754098360656,
+      "prRatio": 0.4634146341463415,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.46875,
+      "top10MedianAge": 26
+    },
+    {
+      "male": 22,
+      "female": 22,
+      "medianAge": 43.5,
+      "party": "DEMOCRATIC INDEPENDENT PARTY",
+      "total": 44,
+      "femaleRatio": 0.5,
+      "wardRatio": 0.5,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.35,
+      "top10MedianAge": 63.5
+    },
+    {
+      "male": 59,
+      "female": 16,
+      "medianAge": 45,
+      "party": "AFRIKAN ALLIANCE OF SOCIAL DEMOCRATS",
+      "total": 75,
+      "femaleRatio": 0.21333333333333335,
+      "wardRatio": 0.22857142857142856,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 67
+    },
+    {
+      "male": 3,
+      "female": 2,
+      "medianAge": 34,
+      "party": "CHRISTIANS OF SOUTH AFRICA",
+      "total": 5,
+      "femaleRatio": 0.4,
+      "wardRatio": 0,
+      "prRatio": 0.6666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6666666666666666,
+      "top10MedianAge": 34
+    },
+    {
+      "male": 11,
+      "female": 9,
+      "medianAge": 48.5,
+      "party": "OUR NATION",
+      "total": 20,
+      "femaleRatio": 0.45,
+      "wardRatio": 0.5714285714285714,
+      "prRatio": 0.16666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.16666666666666666,
+      "top10MedianAge": 50.5
+    },
+    {
+      "male": 3,
+      "female": 1,
+      "medianAge": 64.5,
+      "party": "OUR CITY MATTERS",
+      "total": 4,
+      "femaleRatio": 0.25,
+      "wardRatio": 0,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 64.5
+    },
+    {
+      "male": 17,
+      "female": 6,
+      "medianAge": 41,
+      "party": "SINGUKUKHANYA KWEZWE CHRISTIAN PARTY",
+      "total": 23,
+      "femaleRatio": 0.2608695652173913,
+      "wardRatio": 0,
+      "prRatio": 0.2608695652173913,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 206,
+      "female": 184,
+      "medianAge": 34,
+      "party": "DEFENDERS OF THE PEOPLE",
+      "total": 390,
+      "femaleRatio": 0.4717948717948718,
+      "wardRatio": 0.4957627118644068,
+      "prRatio": 0.43506493506493504,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.37777777777777777,
+      "top10MedianAge": 34.5
+    },
+    {
+      "male": 35,
+      "female": 32,
+      "medianAge": 28,
+      "party": "DEMOCRATIC ARTISTS PARTY",
+      "total": 67,
+      "femaleRatio": 0.47761194029850745,
+      "wardRatio": 0.2777777777777778,
+      "prRatio": 0.5510204081632653,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5428571428571428,
+      "top10MedianAge": 34
+    },
+    {
+      "male": 31,
+      "female": 107,
+      "medianAge": 39.5,
+      "party": "SOUTH AFRICAN MAINTANANCE AND ESTATE BENEFICIARIES ASSOCIATI",
+      "total": 138,
+      "femaleRatio": 0.7753623188405797,
+      "wardRatio": 0.7857142857142857,
+      "prRatio": 0.7727272727272727,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7111111111111111,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 31,
+      "female": 23,
+      "medianAge": 55.5,
+      "party": "DIKWANKWETLA PARTY OF SOUTH AFRICA",
+      "total": 54,
+      "femaleRatio": 0.42592592592592593,
+      "wardRatio": 0.23076923076923078,
+      "prRatio": 0.4878048780487805,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5882352941176471,
+      "top10MedianAge": 63
+    },
+    {
+      "male": 12,
+      "female": 7,
+      "medianAge": 51,
+      "party": "OUDTSHOORN GEMEENSKAP INISIATIEF",
+      "total": 19,
+      "femaleRatio": 0.3684210526315789,
+      "wardRatio": 0.4444444444444444,
+      "prRatio": 0.3,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 51.5
+    },
+    {
+      "male": 45,
+      "female": 40,
+      "medianAge": 36,
+      "party": "CIVIC INDEPENDENT",
+      "total": 85,
+      "femaleRatio": 0.47058823529411764,
+      "wardRatio": 0.375,
+      "prRatio": 0.4927536231884058,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.46808510638297873,
+      "top10MedianAge": 61
+    },
+    {
+      "male": 27,
+      "female": 28,
+      "medianAge": 41,
+      "party": "ALL UNEMPLOYMENT LABOUR ALLIANCE",
+      "total": 55,
+      "femaleRatio": 0.509090909090909,
+      "wardRatio": 0.6129032258064516,
+      "prRatio": 0.375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3157894736842105,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 3,
+      "female": 15,
+      "medianAge": 34.5,
+      "party": "DEVELOPMENT OF JOBS IN VRYHEID",
+      "total": 18,
+      "femaleRatio": 0.8333333333333334,
+      "wardRatio": 0,
+      "prRatio": 0.8333333333333334,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7,
+      "top10MedianAge": 39
+    },
+    {
+      "male": 2,
+      "female": 3,
+      "medianAge": 51,
+      "party": "DISRUPT PARTY",
+      "total": 5,
+      "femaleRatio": 0.6,
+      "wardRatio": 1,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 10,
+      "female": 7,
+      "medianAge": 32,
+      "party": "SUID - KAAP SAAMSTAAN",
+      "total": 17,
+      "femaleRatio": 0.4117647058823529,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.42857142857142855,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.42857142857142855,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 10,
+      "female": 5,
+      "medianAge": 49,
+      "party": "MOVEMENT FOR TOTAL LIBERATION",
+      "total": 15,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0.375,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2857142857142857,
+      "top10MedianAge": 55
+    },
+    {
+      "male": 285,
+      "female": 202,
+      "medianAge": 42,
+      "party": "AFRICAN PEOPLE'S MOVEMENT",
+      "total": 487,
+      "femaleRatio": 0.41478439425051333,
+      "wardRatio": 0.3602941176470588,
+      "prRatio": 0.4358974358974359,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3939393939393939,
+      "top10MedianAge": 76.5
+    },
+    {
+      "male": 9,
+      "female": 11,
+      "medianAge": 27.5,
+      "party": "FUTURE GENERATION CONGRESS",
+      "total": 20,
+      "femaleRatio": 0.55,
+      "wardRatio": 0,
+      "prRatio": 0.6111111111111112,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 32
+    },
+    {
+      "male": 26,
+      "female": 21,
+      "medianAge": 32,
+      "party": "AFRICAN PEOPLE FIRST",
+      "total": 47,
+      "femaleRatio": 0.44680851063829785,
+      "wardRatio": 0.4642857142857143,
+      "prRatio": 0.42105263157894735,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.42105263157894735,
+      "top10MedianAge": 31
+    },
+    {
+      "male": 6,
+      "female": 5,
+      "medianAge": 24,
+      "party": "POELANO REVELATION PARTY",
+      "total": 11,
+      "femaleRatio": 0.45454545454545453,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 32.5
+    },
+    {
+      "male": 14,
+      "female": 9,
+      "medianAge": 49,
+      "party": "PROGRESSIVE COMMUNITY MOVEMENT",
+      "total": 23,
+      "femaleRatio": 0.391304347826087,
+      "wardRatio": 0.5,
+      "prRatio": 0.2727272727272727,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 42.5
+    },
+    {
+      "male": 16,
+      "female": 10,
+      "medianAge": 52,
+      "party": "RANDFONTEIN PEOPLES PARTY",
+      "total": 26,
+      "femaleRatio": 0.38461538461538464,
+      "wardRatio": 0.5454545454545454,
+      "prRatio": 0.26666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.26666666666666666,
+      "top10MedianAge": 57
+    },
+    {
+      "male": 23,
+      "female": 17,
+      "medianAge": 49.5,
+      "party": "MPUMALANGA PARTY",
+      "total": 40,
+      "femaleRatio": 0.425,
+      "wardRatio": 0.3,
+      "prRatio": 0.4666666666666667,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4090909090909091,
+      "top10MedianAge": 44.5
+    },
+    {
+      "male": 163,
+      "female": 130,
+      "medianAge": 39,
+      "party": "ABLE LEADERSHIP",
+      "total": 293,
+      "femaleRatio": 0.44368600682593856,
+      "wardRatio": 0.40540540540540543,
+      "prRatio": 0.4827586206896552,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.46017699115044247,
+      "top10MedianAge": 33
+    },
+    {
+      "male": 26,
+      "female": 11,
+      "medianAge": 32,
+      "party": "SETSOTO SERVICE DELIVERY FORUM",
+      "total": 37,
+      "femaleRatio": 0.2972972972972973,
+      "wardRatio": 0.23076923076923078,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.375,
+      "top10MedianAge": 48.5
+    },
+    {
+      "male": 5,
+      "female": 1,
+      "medianAge": 42,
+      "party": "DIKGATLONG SERVICE DELIVERY FORUM",
+      "total": 6,
+      "femaleRatio": 0.16666666666666666,
+      "wardRatio": 0,
+      "prRatio": 1,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 1,
+      "top10MedianAge": 30
+    },
+    {
+      "male": 10,
+      "female": 3,
+      "medianAge": 44,
+      "party": "DEMOCRATIC PEOPLE'S ALTERNATIVE",
+      "total": 13,
+      "femaleRatio": 0.23076923076923078,
+      "wardRatio": 0,
+      "prRatio": 0.3,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 16,
+      "female": 11,
+      "medianAge": 41,
+      "party": "SOL- PLAATJIE SERVICE DELIVERY FORUM",
+      "total": 27,
+      "femaleRatio": 0.4074074074074074,
+      "wardRatio": 0.4074074074074074,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 16,
+      "female": 10,
+      "medianAge": 38.5,
+      "party": "TIKWANA YOUTH POWER",
+      "total": 26,
+      "femaleRatio": 0.38461538461538464,
+      "wardRatio": 0.6666666666666666,
+      "prRatio": 0.3,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.23529411764705882,
+      "top10MedianAge": 28
+    },
+    {
+      "male": 5,
+      "female": 6,
+      "medianAge": 61,
+      "party": "ARE AGENG AFRIKA",
+      "total": 11,
+      "femaleRatio": 0.5454545454545454,
+      "wardRatio": 0.5,
+      "prRatio": 0.6,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 69
+    },
+    {
+      "male": 15,
+      "female": 6,
+      "medianAge": 25,
+      "party": "MOVEMENT FOR AFRICAN CONVENTION",
+      "total": 21,
+      "femaleRatio": 0.2857142857142857,
+      "wardRatio": 0,
+      "prRatio": 0.35294117647058826,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.375,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 2,
+      "female": 1,
+      "medianAge": 30,
+      "party": "FREE DEMOCRATS",
+      "total": 3,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 30
+    },
+    {
+      "male": 4,
+      "female": 2,
+      "medianAge": 43,
+      "party": "ALLIANCE FOR TRANSFORMATION FOR ALL",
+      "total": 6,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 40,
+      "female": 28,
+      "medianAge": 42.5,
+      "party": "LAND PARTY",
+      "total": 68,
+      "femaleRatio": 0.4117647058823529,
+      "wardRatio": 0.17857142857142858,
+      "prRatio": 0.575,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5945945945945946,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 7,
+      "female": 2,
+      "medianAge": 45,
+      "party": "ACTIVE MOVEMENT FOR CHANGE",
+      "total": 9,
+      "femaleRatio": 0.2222222222222222,
+      "wardRatio": 0.25,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 10,
+      "female": 9,
+      "medianAge": 49,
+      "party": "NGWATHE RESIDENTS ASSOCIATION",
+      "total": 19,
+      "femaleRatio": 0.47368421052631576,
+      "wardRatio": 0,
+      "prRatio": 0.47368421052631576,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 48.5
+    },
+    {
+      "male": 7,
+      "female": 5,
+      "medianAge": 50,
+      "party": "KAREEBERG CIVIC MOVEMENT",
+      "total": 12,
+      "femaleRatio": 0.4166666666666667,
+      "wardRatio": 0,
+      "prRatio": 0.45454545454545453,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.45454545454545453,
+      "top10MedianAge": 53
+    },
+    {
+      "male": 6,
+      "female": 7,
+      "medianAge": 50,
+      "party": "BOTSHABELO UNEMPLOYED MOVEMENT",
+      "total": 13,
+      "femaleRatio": 0.5384615384615384,
+      "wardRatio": 0.6363636363636364,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 52
+    },
+    {
+      "male": 11,
+      "female": 7,
+      "medianAge": 38,
+      "party": "CONCERN",
+      "total": 18,
+      "femaleRatio": 0.3888888888888889,
+      "wardRatio": 0,
+      "prRatio": 0.3888888888888889,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 100,
+      "female": 48,
+      "medianAge": 50.5,
+      "party": "BOLSHEVIKS PARTY OF SOUTH AFRICA",
+      "total": 148,
+      "femaleRatio": 0.32432432432432434,
+      "wardRatio": 0.29577464788732394,
+      "prRatio": 0.35064935064935066,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.34328358208955223,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 2,
+      "female": 1,
+      "medianAge": 51,
+      "party": "SOCIALIST CIVIC MOVEMENT",
+      "total": 3,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 23,
+      "female": 11,
+      "medianAge": 41,
+      "party": "GAZANKULU LIBERATION CONGRESS",
+      "total": 34,
+      "femaleRatio": 0.3235294117647059,
+      "wardRatio": 0.2727272727272727,
+      "prRatio": 0.34782608695652173,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3888888888888889,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 16,
+      "female": 11,
+      "medianAge": 46,
+      "party": "MANDELA BAY COMMUNITY MOVEMENT",
+      "total": 27,
+      "femaleRatio": 0.4074074074074074,
+      "wardRatio": 1,
+      "prRatio": 0.38461538461538464,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 42.5
+    },
+    {
+      "male": 9,
+      "female": 21,
+      "medianAge": 37,
+      "party": "STERKSPRUIT CIVIC ASSOCIATION",
+      "total": 30,
+      "femaleRatio": 0.7,
+      "wardRatio": 0.7692307692307693,
+      "prRatio": 0.6470588235294118,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6363636363636364,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 6,
+      "female": 4,
+      "medianAge": 43,
+      "party": "RISE UP AFRICA / TSOGA AFRICA",
+      "total": 10,
+      "femaleRatio": 0.4,
+      "wardRatio": 0,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 8,
+      "female": 7,
+      "medianAge": 39,
+      "party": "UNITED PROGRESSIVE PARTY SOUTH AFRICA",
+      "total": 15,
+      "femaleRatio": 0.4666666666666667,
+      "wardRatio": 0,
+      "prRatio": 0.4666666666666667,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 1,
+      "female": 0,
+      "medianAge": 56,
+      "party": "DRAKENSBERG CONCERNED RESIDENTS",
+      "total": 1,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 8,
+      "female": 8,
+      "medianAge": 46,
+      "party": "MINORITY FRONT",
+      "total": 16,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5333333333333333,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 12,
+      "female": 5,
+      "medianAge": 42,
+      "party": "PROGRESSIVE CHANGE",
+      "total": 17,
+      "femaleRatio": 0.29411764705882354,
+      "wardRatio": 0.4,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 5,
+      "female": 5,
+      "medianAge": 40,
+      "party": "DIENSLEWERINGS PARTY",
+      "total": 10,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 40
+    },
+    {
+      "male": 33,
+      "female": 30,
+      "medianAge": 50,
+      "party": "NORTHERN ALLIANCE",
+      "total": 63,
+      "femaleRatio": 0.47619047619047616,
+      "wardRatio": 0,
+      "prRatio": 0.5084745762711864,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 51.5
+    },
+    {
+      "male": 27,
+      "female": 8,
+      "medianAge": 27,
+      "party": "MERAFONG AGENTS OF CHANGE",
+      "total": 35,
+      "femaleRatio": 0.22857142857142856,
+      "wardRatio": 0.19047619047619047,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 37
+    },
+    {
+      "male": 12,
+      "female": 3,
+      "medianAge": 41,
+      "party": "CIVIC VOICE",
+      "total": 15,
+      "femaleRatio": 0.2,
+      "wardRatio": 0.2,
+      "prRatio": 0.2,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 58,
+      "female": 32,
+      "medianAge": 44.5,
+      "party": "AFRICAN INDEPENDENT PEOPLE'S ORGANISATION",
+      "total": 90,
+      "femaleRatio": 0.35555555555555557,
+      "wardRatio": 0.25,
+      "prRatio": 0.3939393939393939,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 673,
+      "female": 476,
+      "medianAge": 65,
+      "party": "NATIONAL FREEDOM PARTY",
+      "total": 1149,
+      "femaleRatio": 0.4142732811140122,
+      "wardRatio": 0.37115839243498816,
+      "prRatio": 0.4393939393939394,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.41453831041257366,
+      "top10MedianAge": 33
+    },
+    {
+      "male": 1181,
+      "female": 257,
+      "medianAge": 45.5,
+      "party": "INDEPENDENT",
+      "total": 1438,
+      "femaleRatio": 0.1787204450625869,
+      "wardRatio": 0.1787204450625869,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 13,
+      "female": 6,
+      "medianAge": 39,
+      "party": "LIMPOPO RESIDENTS ASSOCIATION",
+      "total": 19,
+      "femaleRatio": 0.3157894736842105,
+      "wardRatio": 0,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.36363636363636365,
+      "top10MedianAge": 63
+    },
+    {
+      "male": 3,
+      "female": 0,
+      "medianAge": 64,
+      "party": "FEDERAL PARTY SA",
+      "total": 3,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 54
+    },
+    {
+      "male": 22,
+      "female": 36,
+      "medianAge": 49.5,
+      "party": "DEMOCRATIC PEOPLE'S MOVEMENT",
+      "total": 58,
+      "femaleRatio": 0.6206896551724138,
+      "wardRatio": 0.75,
+      "prRatio": 0.6,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7,
+      "top10MedianAge": 54
+    },
+    {
+      "male": 5,
+      "female": 8,
+      "medianAge": 33,
+      "party": "LEBOWAKGOMO CIVIC ORGANIZATION",
+      "total": 13,
+      "femaleRatio": 0.6153846153846154,
+      "wardRatio": 1,
+      "prRatio": 0.5454545454545454,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 41.5
+    },
+    {
+      "male": 17,
+      "female": 25,
+      "medianAge": 39.5,
+      "party": "TEAM SUGAR SOUTH AFRICA",
+      "total": 42,
+      "femaleRatio": 0.5952380952380952,
+      "wardRatio": 0.5714285714285714,
+      "prRatio": 0.6,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.43478260869565216,
+      "top10MedianAge": 38
+    },
+    {
+      "male": 69,
+      "female": 34,
+      "medianAge": 42,
+      "party": "COMPATRIOTS OF SOUTH AFRICA",
+      "total": 103,
+      "femaleRatio": 0.3300970873786408,
+      "wardRatio": 0.2727272727272727,
+      "prRatio": 0.33695652173913043,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3283582089552239,
+      "top10MedianAge": 63
+    },
+    {
+      "male": 30,
+      "female": 18,
+      "medianAge": 40.5,
+      "party": "ALTERNATIVE AFRICAN ALLEGIANCE",
+      "total": 48,
+      "femaleRatio": 0.375,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.38461538461538464,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4666666666666667,
+      "top10MedianAge": 58
+    },
+    {
+      "male": 127,
+      "female": 49,
+      "medianAge": 38.5,
+      "party": "ACTIONSA",
+      "total": 176,
+      "femaleRatio": 0.2784090909090909,
+      "wardRatio": 0.203125,
+      "prRatio": 0.32142857142857145,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 57.5
+    },
+    {
+      "male": 4,
+      "female": 2,
+      "medianAge": 48.5,
+      "party": "CEDERBERG FIRST RESIDENTS ASSOCIATION",
+      "total": 6,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0.5,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 64
+    },
+    {
+      "male": 1,
+      "female": 1,
+      "medianAge": 31.5,
+      "party": "CIVIC MOVEMENT OF SOUTH AFRICA",
+      "total": 2,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 31.5
+    },
+    {
+      "male": 5,
+      "female": 2,
+      "medianAge": 59,
+      "party": "COMMUNITY PARTY",
+      "total": 7,
+      "femaleRatio": 0.2857142857142857,
+      "wardRatio": 0,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2857142857142857,
+      "top10MedianAge": 59
+    },
+    {
+      "male": 19,
+      "female": 5,
+      "medianAge": 36,
+      "party": "ACTIVE NATION AGAINST CORRUPTION",
+      "total": 24,
+      "femaleRatio": 0.20833333333333334,
+      "wardRatio": 0.3076923076923077,
+      "prRatio": 0.09090909090909091,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.09090909090909091,
+      "top10MedianAge": 63
+    },
+    {
+      "male": 21,
+      "female": 12,
+      "medianAge": 36,
+      "party": "AZANIA RESIDENT PARTY",
+      "total": 33,
+      "femaleRatio": 0.36363636363636365,
+      "wardRatio": 0.5714285714285714,
+      "prRatio": 0.3076923076923077,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.38461538461538464,
+      "top10MedianAge": 39
+    },
+    {
+      "male": 7,
+      "female": 3,
+      "medianAge": 48,
+      "party": "PLETT DEMOCRATIC CONGRESS",
+      "total": 10,
+      "femaleRatio": 0.3,
+      "wardRatio": 0,
+      "prRatio": 0.3,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 2,
+      "female": 6,
+      "medianAge": 45.5,
+      "party": "CITIZENS RIGHTS PROTECTION UNITY",
+      "total": 8,
+      "femaleRatio": 0.75,
+      "wardRatio": 0,
+      "prRatio": 0.75,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.75,
+      "top10MedianAge": 45.5
+    },
+    {
+      "male": 19,
+      "female": 7,
+      "medianAge": 45.5,
+      "party": "AFRICAN SECURITY CONGRESS",
+      "total": 26,
+      "femaleRatio": 0.2692307692307692,
+      "wardRatio": 0,
+      "prRatio": 0.2692307692307692,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.22727272727272727,
+      "top10MedianAge": 40.5
+    },
+    {
+      "male": 9,
+      "female": 5,
+      "medianAge": 43,
+      "party": "BELABELA COMMUNITY REVOLUTION",
+      "total": 14,
+      "femaleRatio": 0.35714285714285715,
+      "wardRatio": 0.2857142857142857,
+      "prRatio": 0.42857142857142855,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.42857142857142855,
+      "top10MedianAge": 23
+    },
+    {
+      "male": 8,
+      "female": 3,
+      "medianAge": 32,
+      "party": "SIZWE UMMAH NATION",
+      "total": 11,
+      "femaleRatio": 0.2727272727272727,
+      "wardRatio": 0,
+      "prRatio": 0.2727272727272727,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2727272727272727,
+      "top10MedianAge": 32
+    },
+    {
+      "male": 17,
+      "female": 14,
+      "medianAge": 46,
+      "party": "ALLIED MOVEMENT FOR CHANGE",
+      "total": 31,
+      "femaleRatio": 0.45161290322580644,
+      "wardRatio": 0.4,
+      "prRatio": 0.47619047619047616,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.47058823529411764,
+      "top10MedianAge": 34
+    },
+    {
+      "male": 9,
+      "female": 7,
+      "medianAge": 34,
+      "party": "SAYCO GONDWE CIVIC MOVEMENT",
+      "total": 16,
+      "femaleRatio": 0.4375,
+      "wardRatio": 0.5,
+      "prRatio": 0.375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.375,
+      "top10MedianAge": 35.5
+    },
+    {
+      "male": 13,
+      "female": 4,
+      "medianAge": 33,
+      "party": "UMSOBOMVU RESIDENTS ASSOCIATION",
+      "total": 17,
+      "femaleRatio": 0.23529411764705882,
+      "wardRatio": 0.4,
+      "prRatio": 0.16666666666666666,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.16666666666666666,
+      "top10MedianAge": 48.5
+    },
+    {
+      "male": 13,
+      "female": 7,
+      "medianAge": 42.5,
+      "party": "THABAZIMBI FORUM FOR SERVICE DELIVERY",
+      "total": 20,
+      "femaleRatio": 0.35,
+      "wardRatio": 0.3,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 28.5
+    },
+    {
+      "male": 72,
+      "female": 43,
+      "medianAge": 39,
+      "party": "PEOPLE'S FREEDOM PARTY",
+      "total": 115,
+      "femaleRatio": 0.3739130434782609,
+      "wardRatio": 0.4411764705882353,
+      "prRatio": 0.345679012345679,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.39215686274509803,
+      "top10MedianAge": 41
+    },
+    {
+      "male": 20,
+      "female": 10,
+      "medianAge": 54,
+      "party": "AFRICAN HEART CONGRESS",
+      "total": 30,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7,
+      "top10MedianAge": 46.5
+    },
+    {
+      "male": 42,
+      "female": 22,
+      "medianAge": 41,
+      "party": "COMMUNITY SOLIDARITY ASSOCIATION",
+      "total": 64,
+      "femaleRatio": 0.34375,
+      "wardRatio": 0.26666666666666666,
+      "prRatio": 0.4117647058823529,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.35714285714285715,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 16,
+      "female": 9,
+      "medianAge": 49,
+      "party": "WESTERN PROVINCE PARTY",
+      "total": 25,
+      "femaleRatio": 0.36,
+      "wardRatio": 0.25,
+      "prRatio": 0.38095238095238093,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.38095238095238093,
+      "top10MedianAge": 35
+    },
+    {
+      "male": 11,
+      "female": 16,
+      "medianAge": 27,
+      "party": "KHOISAN REVOLUTION",
+      "total": 27,
+      "femaleRatio": 0.5925925925925926,
+      "wardRatio": 0.6666666666666666,
+      "prRatio": 0.5833333333333334,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5652173913043478,
+      "top10MedianAge": 36
+    },
+    {
+      "male": 5,
+      "female": 4,
+      "medianAge": 40,
+      "party": "KAROO ONTWIKKELINGS PARTY",
+      "total": 9,
+      "femaleRatio": 0.4444444444444444,
+      "wardRatio": 0,
+      "prRatio": 0.5714285714285714,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5714285714285714,
+      "top10MedianAge": 52
+    },
+    {
+      "male": 11,
+      "female": 15,
+      "medianAge": 33,
+      "party": "IKEMELENG FREE STATE",
+      "total": 26,
+      "femaleRatio": 0.5769230769230769,
+      "wardRatio": 0.5333333333333333,
+      "prRatio": 0.6363636363636364,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6363636363636364,
+      "top10MedianAge": 38
+    },
+    {
+      "male": 6,
+      "female": 6,
+      "medianAge": 49,
+      "party": "MALETSWAI CIVIC ASSOCIATION",
+      "total": 12,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 50.5
+    },
+    {
+      "male": 21,
+      "female": 22,
+      "medianAge": 43,
+      "party": "MORETELE INDEPENDENT CIVIC ORGANIZATION",
+      "total": 43,
+      "femaleRatio": 0.5116279069767442,
+      "wardRatio": 0.5714285714285714,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.47058823529411764,
+      "top10MedianAge": 30
+    },
+    {
+      "male": 3,
+      "female": 2,
+      "medianAge": 58,
+      "party": "KAAP AGULHAS CIVIC ORGANISASIE",
+      "total": 5,
+      "femaleRatio": 0.4,
+      "wardRatio": 0,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 58
+    },
+    {
+      "male": 23,
+      "female": 9,
+      "medianAge": 46.5,
+      "party": "KNOW YOUR NEIGHBOUR",
+      "total": 32,
+      "femaleRatio": 0.28125,
+      "wardRatio": 0.125,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3157894736842105,
+      "top10MedianAge": 23
+    },
+    {
+      "male": 31,
+      "female": 22,
+      "medianAge": 65,
+      "party": "DISABILITY AND OLDER PERSON POLITICAL PARTY",
+      "total": 53,
+      "femaleRatio": 0.41509433962264153,
+      "wardRatio": 0.3076923076923077,
+      "prRatio": 0.45,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 1,
+      "female": 0,
+      "medianAge": 37,
+      "party": "KNYSNA SOCIAL DEMOCRATIC PARTY",
+      "total": 1,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 3,
+      "female": 4,
+      "medianAge": 35,
+      "party": "SOUTH AFRICAN SECURITY ORGANISATION",
+      "total": 7,
+      "femaleRatio": 0.5714285714285714,
+      "wardRatio": 0,
+      "prRatio": 0.5714285714285714,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5714285714285714,
+      "top10MedianAge": 35
+    },
+    {
+      "male": 80,
+      "female": 112,
+      "medianAge": 42.5,
+      "party": "JUSTICE AND EMPLOYMENT PARTY",
+      "total": 192,
+      "femaleRatio": 0.5833333333333334,
+      "wardRatio": 0.6024096385542169,
+      "prRatio": 0.5688073394495413,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5416666666666666,
+      "top10MedianAge": 30
+    },
+    {
+      "male": 16,
+      "female": 24,
+      "medianAge": 49,
+      "party": "PROGRESSIVE FRONT OF SOUTH AFRICA",
+      "total": 40,
+      "femaleRatio": 0.6,
+      "wardRatio": 0.7272727272727273,
+      "prRatio": 0.5517241379310345,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4375,
+      "top10MedianAge": 51.5
+    },
+    {
+      "male": 1,
+      "female": 0,
+      "medianAge": 61,
+      "party": "KONSERWATIEWE PARTY/CONSERVATIVE PARTY",
+      "total": 1,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 61
+    },
+    {
+      "male": 29,
+      "female": 19,
+      "medianAge": 38.5,
+      "party": "NAMAKWA CIVIC MOVEMENT",
+      "total": 48,
+      "femaleRatio": 0.3958333333333333,
+      "wardRatio": 0.35294117647058826,
+      "prRatio": 0.41935483870967744,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.41935483870967744,
+      "top10MedianAge": 60
+    },
+    {
+      "male": 6,
+      "female": 1,
+      "medianAge": 34,
+      "party": "EASTERN CAPE MOVEMENT",
+      "total": 7,
+      "femaleRatio": 0.14285714285714285,
+      "wardRatio": 0,
+      "prRatio": 0.2,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2,
+      "top10MedianAge": 28
+    },
+    {
+      "male": 13,
+      "female": 6,
+      "medianAge": 44,
+      "party": "DEVOTED CITIZENS OF MSUNDUZI",
+      "total": 19,
+      "femaleRatio": 0.3157894736842105,
+      "wardRatio": 0,
+      "prRatio": 0.375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.36363636363636365,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 2,
+      "female": 0,
+      "medianAge": 40,
+      "party": "FRANCES BAARD DISTRICT FORUM",
+      "total": 2,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 40
+    },
+    {
+      "male": 38,
+      "female": 49,
+      "medianAge": 44,
+      "party": "SOCIALIST PARTY OF SOUTH AFRICA",
+      "total": 87,
+      "femaleRatio": 0.5632183908045977,
+      "wardRatio": 0.52,
+      "prRatio": 0.5806451612903226,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5116279069767442,
+      "top10MedianAge": 23
+    },
+    {
+      "male": 33,
+      "female": 50,
+      "medianAge": 27,
+      "party": "AFRICAN CONTENT MOVEMENT",
+      "total": 83,
+      "femaleRatio": 0.6024096385542169,
+      "wardRatio": 0.5757575757575758,
+      "prRatio": 0.62,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 36.5
+    },
+    {
+      "male": 6,
+      "female": 5,
+      "medianAge": 36,
+      "party": "HESSEQUA PEOPLES MOVEMENT",
+      "total": 11,
+      "femaleRatio": 0.45454545454545453,
+      "wardRatio": 0.4,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 35.5
+    },
+    {
+      "male": 4837,
+      "female": 4254,
+      "medianAge": 38,
+      "party": "AFRICAN NATIONAL CONGRESS",
+      "total": 9091,
+      "femaleRatio": 0.46793532064679355,
+      "wardRatio": 0.30783669638667294,
+      "prRatio": 0.6092358666390557,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6259982253771074,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 9,
+      "female": 3,
+      "medianAge": 35,
+      "party": "AFRICAN ECONOMIC TRANSFORMERS",
+      "total": 12,
+      "femaleRatio": 0.25,
+      "wardRatio": 0.5,
+      "prRatio": 0.125,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.125,
+      "top10MedianAge": 55
+    },
+    {
+      "male": 23,
+      "female": 15,
+      "medianAge": 40.5,
+      "party": "MINORITIES OF SOUTH AFRICA",
+      "total": 38,
+      "femaleRatio": 0.39473684210526316,
+      "wardRatio": 1,
+      "prRatio": 0.3783783783783784,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 59.5
+    },
+    {
+      "male": 2,
+      "female": 2,
+      "medianAge": 49,
+      "party": "KANNALAND INDEPENDENT PARTY",
+      "total": 4,
+      "femaleRatio": 0.5,
+      "wardRatio": 0.6666666666666666,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 4,
+      "female": 7,
+      "medianAge": 55,
+      "party": "SOUTH AFRICAN RELIGIOUS CIVIC ORGANISATION",
+      "total": 11,
+      "femaleRatio": 0.6363636363636364,
+      "wardRatio": 0,
+      "prRatio": 0.6363636363636364,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 52
+    },
+    {
+      "male": 6,
+      "female": 4,
+      "medianAge": 46.5,
+      "party": "EDEN UNITED PEOPLE'S PARTY",
+      "total": 10,
+      "femaleRatio": 0.4,
+      "wardRatio": 0.5,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 59.5
+    },
+    {
+      "male": 42,
+      "female": 22,
+      "medianAge": 40.5,
+      "party": "ACTIVE CITIZENS COALITION",
+      "total": 64,
+      "femaleRatio": 0.34375,
+      "wardRatio": 0.375,
+      "prRatio": 0.3392857142857143,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 7,
+      "female": 3,
+      "medianAge": 45,
+      "party": "INDEPENDENT RATEPAYERS ASSOCIATION OF SA",
+      "total": 10,
+      "femaleRatio": 0.3,
+      "wardRatio": 0,
+      "prRatio": 0.3,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 17,
+      "female": 9,
+      "medianAge": 44.5,
+      "party": "FORUM FOR DEMOCRATS",
+      "total": 26,
+      "femaleRatio": 0.34615384615384615,
+      "wardRatio": 0,
+      "prRatio": 0.375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.36363636363636365,
+      "top10MedianAge": 44.5
+    },
+    {
+      "male": 3,
+      "female": 4,
+      "medianAge": 43,
+      "party": "KATEKANI ECONOMIC POWER",
+      "total": 7,
+      "femaleRatio": 0.5714285714285714,
+      "wardRatio": 0,
+      "prRatio": 0.5714285714285714,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5714285714285714,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 60,
+      "female": 41,
+      "medianAge": 27,
+      "party": "SOCIALIST AGENDA OF DISPOSSESSED AFRICANS",
+      "total": 101,
+      "femaleRatio": 0.40594059405940597,
+      "wardRatio": 0.4782608695652174,
+      "prRatio": 0.38461538461538464,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.30303030303030304,
+      "top10MedianAge": 28
+    },
+    {
+      "male": 19,
+      "female": 35,
+      "medianAge": 48,
+      "party": "THE ORGANIC HUMANITY MOVEMENT",
+      "total": 54,
+      "femaleRatio": 0.6481481481481481,
+      "wardRatio": 0,
+      "prRatio": 0.6481481481481481,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.660377358490566,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 6,
+      "female": 9,
+      "medianAge": 44,
+      "party": "BOTHO COMMUNITY MOVEMENT",
+      "total": 15,
+      "femaleRatio": 0.6,
+      "wardRatio": 0.5,
+      "prRatio": 0.6363636363636364,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 31.5
+    },
+    {
+      "male": 3,
+      "female": 1,
+      "medianAge": 47,
+      "party": "KHOWA RESIDENTS ASSOCIATION",
+      "total": 4,
+      "femaleRatio": 0.25,
+      "wardRatio": 0.5,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 125,
+      "female": 97,
+      "medianAge": 37,
+      "party": "AFRICAN FREEDOM REVOLUTION",
+      "total": 222,
+      "femaleRatio": 0.4369369369369369,
+      "wardRatio": 0.41836734693877553,
+      "prRatio": 0.45161290322580644,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4431818181818182,
+      "top10MedianAge": 40
+    },
+    {
+      "male": 457,
+      "female": 425,
+      "medianAge": 43.5,
+      "party": "UNITED DEMOCRATIC MOVEMENT",
+      "total": 882,
+      "femaleRatio": 0.481859410430839,
+      "wardRatio": 0.5,
+      "prRatio": 0.47419354838709676,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.44221105527638194,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 3,
+      "female": 1,
+      "medianAge": 56,
+      "party": "CHRISTIAN AMBASSADORS POLITICAL PARTY",
+      "total": 4,
+      "femaleRatio": 0.25,
+      "wardRatio": 0.5,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 613,
+      "female": 254,
+      "medianAge": 79,
+      "party": "VRYHEIDSFRONT PLUS",
+      "total": 867,
+      "femaleRatio": 0.29296424452133796,
+      "wardRatio": 0.3142857142857143,
+      "prRatio": 0.2920673076923077,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.29608938547486036,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 13,
+      "female": 1,
+      "medianAge": 37.5,
+      "party": "AGENDA TO CITIZENRY GOVERNORS",
+      "total": 14,
+      "femaleRatio": 0.07142857142857142,
+      "wardRatio": 0,
+      "prRatio": 0.14285714285714285,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.14285714285714285,
+      "top10MedianAge": 29
+    },
+    {
+      "male": 27,
+      "female": 15,
+      "medianAge": 43.5,
+      "party": "INDEPENDENT ALLIANCE",
+      "total": 42,
+      "femaleRatio": 0.35714285714285715,
+      "wardRatio": 0.1,
+      "prRatio": 0.4375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.45,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 6,
+      "female": 10,
+      "medianAge": 35.5,
+      "party": "SAKHISIZWE PROGRESSIVE MOVEMENT",
+      "total": 16,
+      "femaleRatio": 0.625,
+      "wardRatio": 0,
+      "prRatio": 0.625,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7,
+      "top10MedianAge": 48.5
+    },
+    {
+      "male": 6,
+      "female": 2,
+      "medianAge": 26,
+      "party": "YOUNG PEOPLES PARTY",
+      "total": 8,
+      "femaleRatio": 0.25,
+      "wardRatio": 0,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 26
+    },
+    {
+      "male": 300,
+      "female": 384,
+      "medianAge": 56.5,
+      "party": "AFRICAN INDEPENDENT CONGRESS",
+      "total": 684,
+      "femaleRatio": 0.5614035087719298,
+      "wardRatio": 0.558282208588957,
+      "prRatio": 0.5623800383877159,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5884057971014492,
+      "top10MedianAge": 28
+    },
+    {
+      "male": 11,
+      "female": 7,
+      "medianAge": 41.5,
+      "party": "MAKANA CITIZENS FRONT",
+      "total": 18,
+      "femaleRatio": 0.3888888888888889,
+      "wardRatio": 0.45454545454545453,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2857142857142857,
+      "top10MedianAge": 58
+    },
+    {
+      "male": 17,
+      "female": 11,
+      "medianAge": 44.5,
+      "party": "BUSHBUCKRIDGE LOCALS MOVEMENT",
+      "total": 28,
+      "femaleRatio": 0.39285714285714285,
+      "wardRatio": 0.4074074074074074,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 10,
+      "female": 11,
+      "medianAge": 28,
+      "party": "HOPE FOR THE FUTURE",
+      "total": 21,
+      "femaleRatio": 0.5238095238095238,
+      "wardRatio": 0.3,
+      "prRatio": 0.7272727272727273,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7272727272727273,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 278,
+      "female": 164,
+      "medianAge": 49.5,
+      "party": "FORUM 4 SERVICE DELIVERY",
+      "total": 442,
+      "femaleRatio": 0.37104072398190047,
+      "wardRatio": 0.38860103626943004,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 44.5
+    },
+    {
+      "male": 7,
+      "female": 5,
+      "medianAge": 39,
+      "party": "DEMOCRATIC ASSOCIATION OF WITZENBERG INDEPENDENCE",
+      "total": 12,
+      "femaleRatio": 0.4166666666666667,
+      "wardRatio": 0.5555555555555556,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 1,
+      "female": 0,
+      "medianAge": 69,
+      "party": "ZULU ROYAL PROPERTY",
+      "total": 1,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 49,
+      "female": 70,
+      "medianAge": 43,
+      "party": "BATHO PELE MOVEMENT",
+      "total": 119,
+      "femaleRatio": 0.5882352941176471,
+      "wardRatio": 0.8235294117647058,
+      "prRatio": 0.5490196078431373,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.527027027027027,
+      "top10MedianAge": 41
+    },
+    {
+      "male": 28,
+      "female": 14,
+      "medianAge": 39,
+      "party": "ANSWER FOR COMMUNITY",
+      "total": 42,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0.4666666666666667,
+      "prRatio": 0.25925925925925924,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.1,
+      "top10MedianAge": 54.5
+    },
+    {
+      "male": 210,
+      "female": 155,
+      "medianAge": 63,
+      "party": "INTERNATIONAL REVELATION CONGRESS",
+      "total": 365,
+      "femaleRatio": 0.4246575342465753,
+      "wardRatio": 0.3465909090909091,
+      "prRatio": 0.4973544973544973,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 40.5
+    },
+    {
+      "male": 14,
+      "female": 19,
+      "medianAge": 35,
+      "party": "INDEPENDENTS FOR COMMUNITIES",
+      "total": 33,
+      "femaleRatio": 0.5757575757575758,
+      "wardRatio": 0.4,
+      "prRatio": 0.6071428571428571,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 32,
+      "female": 29,
+      "medianAge": 26,
+      "party": "PLAASLIKE BESORGDE INWONERS",
+      "total": 61,
+      "femaleRatio": 0.47540983606557374,
+      "wardRatio": 0.5,
+      "prRatio": 0.4727272727272727,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5526315789473685,
+      "top10MedianAge": 56.5
+    },
+    {
+      "male": 19,
+      "female": 18,
+      "medianAge": 61,
+      "party": "MOQHAKA COMMUNITY FORUM",
+      "total": 37,
+      "femaleRatio": 0.4864864864864865,
+      "wardRatio": 0.5714285714285714,
+      "prRatio": 0.375,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 49.5
+    },
+    {
+      "male": 5,
+      "female": 5,
+      "medianAge": 62.5,
+      "party": "NATIONAL RELIGIOUS FREEDOM PARTY",
+      "total": 10,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5555555555555556,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5555555555555556,
+      "top10MedianAge": 63
+    },
+    {
+      "male": 9,
+      "female": 16,
+      "medianAge": 32,
+      "party": "YOUTH INDEPENDENCE PARTY AND YOUTH ASSOCIATES",
+      "total": 25,
+      "femaleRatio": 0.64,
+      "wardRatio": 0.8571428571428571,
+      "prRatio": 0.5555555555555556,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5882352941176471,
+      "top10MedianAge": 35
+    },
+    {
+      "male": 13,
+      "female": 7,
+      "medianAge": 33.5,
+      "party": "THE INDEPENDENTS",
+      "total": 20,
+      "femaleRatio": 0.35,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.35294117647058826,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 2,
+      "female": 2,
+      "medianAge": 35.5,
+      "party": "DEMOCRATIC FREEDOM ALLIANCE",
+      "total": 4,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 35.5
+    },
+    {
+      "male": 4,
+      "female": 8,
+      "medianAge": 54.5,
+      "party": "ABAHLALY BAAHI",
+      "total": 12,
+      "femaleRatio": 0.6666666666666666,
+      "wardRatio": 1,
+      "prRatio": 0.6363636363636364,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 48
+    },
+    {
+      "male": 20,
+      "female": 45,
+      "medianAge": 41,
+      "party": "AFRICAN PEOPLE'S SOCIALIST PARTY",
+      "total": 65,
+      "femaleRatio": 0.6923076923076923,
+      "wardRatio": 1,
+      "prRatio": 0.6825396825396826,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6111111111111112,
+      "top10MedianAge": 44.5
+    },
+    {
+      "male": 96,
+      "female": 42,
+      "medianAge": 66,
+      "party": "CAPE INDEPENDENCE PARTY / KAAPSE ONAFHANKLIKHEIDS PARTY",
+      "total": 138,
+      "femaleRatio": 0.30434782608695654,
+      "wardRatio": 0.3220338983050847,
+      "prRatio": 0.2911392405063291,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2911392405063291,
+      "top10MedianAge": 47
+    },
+    {
+      "male": 19,
+      "female": 9,
+      "medianAge": 41.5,
+      "party": "AFRICAN UNIFIED MOVEMENT",
+      "total": 28,
+      "femaleRatio": 0.32142857142857145,
+      "wardRatio": 0.3,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 40.5
+    },
+    {
+      "male": 13,
+      "female": 16,
+      "medianAge": 24,
+      "party": "LEIHLO LA SETJHABA RAINBOW",
+      "total": 29,
+      "femaleRatio": 0.5517241379310345,
+      "wardRatio": 0.5,
+      "prRatio": 0.56,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6111111111111112,
+      "top10MedianAge": 44.5
+    },
+    {
+      "male": 0,
+      "female": 1,
+      "medianAge": 45,
+      "party": "HUMAN DIGNITY RESTORATION",
+      "total": 1,
+      "femaleRatio": 1,
+      "wardRatio": 1,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 15,
+      "female": 3,
+      "medianAge": 58.5,
+      "party": "MTHATHA RATEPAYERS AND RESIDENTS ASSOCIATION",
+      "total": 18,
+      "femaleRatio": 0.16666666666666666,
+      "wardRatio": 0,
+      "prRatio": 0.17647058823529413,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.1,
+      "top10MedianAge": 50
+    },
+    {
+      "male": 13,
+      "female": 18,
+      "medianAge": 44,
+      "party": "NATIONAL COMMUNIST CONGRESS",
+      "total": 31,
+      "femaleRatio": 0.5806451612903226,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.6071428571428571,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5833333333333334,
+      "top10MedianAge": 54
+    },
+    {
+      "male": 36,
+      "female": 41,
+      "medianAge": 29,
+      "party": "AFRICAN MULTICULTURAL ECONOMIC CONGRESS",
+      "total": 77,
+      "femaleRatio": 0.5324675324675324,
+      "wardRatio": 0.5652173913043478,
+      "prRatio": 0.5185185185185185,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6153846153846154,
+      "top10MedianAge": 26.5
+    },
+    {
+      "male": 35,
+      "female": 62,
+      "medianAge": 50,
+      "party": "THE PEOPLE'S VOICE",
+      "total": 97,
+      "femaleRatio": 0.6391752577319587,
+      "wardRatio": 1,
+      "prRatio": 0.631578947368421,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5238095238095238,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 50,
+      "female": 42,
+      "medianAge": 54,
+      "party": "AFRICAN DEMOCRATIC CHANGE",
+      "total": 92,
+      "femaleRatio": 0.45652173913043476,
+      "wardRatio": 0.75,
+      "prRatio": 0.4431818181818182,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.42857142857142855,
+      "top10MedianAge": 51
+    },
+    {
+      "male": 34,
+      "female": 14,
+      "medianAge": 39,
+      "party": "NATIONAL INDEPENDENT PARTY",
+      "total": 48,
+      "femaleRatio": 0.2916666666666667,
+      "wardRatio": 0.25,
+      "prRatio": 0.3125,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25,
+      "top10MedianAge": 54
+    },
+    {
+      "male": 14,
+      "female": 14,
+      "medianAge": 39.5,
+      "party": "ONE MOVEMENT FOR CAPE TOWN",
+      "total": 28,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5185185185185185,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 59
+    },
+    {
+      "male": 20,
+      "female": 8,
+      "medianAge": 45,
+      "party": "CREDIBLE ALTERNATIVE 1ST MOVEMENT",
+      "total": 28,
+      "femaleRatio": 0.2857142857142857,
+      "wardRatio": 0,
+      "prRatio": 0.2857142857142857,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 61
+    },
+    {
+      "male": 9,
+      "female": 4,
+      "medianAge": 58,
+      "party": "SERVICE FOR ALL",
+      "total": 13,
+      "femaleRatio": 0.3076923076923077,
+      "wardRatio": 0.2857142857142857,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3333333333333333,
+      "top10MedianAge": 39
+    },
+    {
+      "male": 7,
+      "female": 8,
+      "medianAge": 26,
+      "party": "AFRICAN VOICE",
+      "total": 15,
+      "femaleRatio": 0.5333333333333333,
+      "wardRatio": 0.2,
+      "prRatio": 0.7,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7,
+      "top10MedianAge": 32.5
+    },
+    {
+      "male": 53,
+      "female": 20,
+      "medianAge": 39,
+      "party": "NEW HORIZON MOVEMENT",
+      "total": 73,
+      "femaleRatio": 0.273972602739726,
+      "wardRatio": 0.24242424242424243,
+      "prRatio": 0.3,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.35,
+      "top10MedianAge": 42.5
+    },
+    {
+      "male": 8,
+      "female": 4,
+      "medianAge": 60,
+      "party": "UNITED COMMUNITY FRONT",
+      "total": 12,
+      "femaleRatio": 0.3333333333333333,
+      "wardRatio": 0,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.3,
+      "top10MedianAge": 56.5
+    },
+    {
+      "male": 15,
+      "female": 21,
+      "medianAge": 49,
+      "party": "UNITED SOUTH AFRICA",
+      "total": 36,
+      "femaleRatio": 0.5833333333333334,
+      "wardRatio": 0.5,
+      "prRatio": 0.5882352941176471,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 60
+    },
+    {
+      "male": 19,
+      "female": 9,
+      "medianAge": 41,
+      "party": "MOGALAKWENA RESIDENTS ASSOCIATION",
+      "total": 28,
+      "femaleRatio": 0.32142857142857145,
+      "wardRatio": 0.3,
+      "prRatio": 0.3333333333333333,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4,
+      "top10MedianAge": 43.5
+    },
+    {
+      "male": 222,
+      "female": 171,
+      "medianAge": 25,
+      "party": "BLACK FIRST LAND FIRST",
+      "total": 393,
+      "femaleRatio": 0.4351145038167939,
+      "wardRatio": 0.43902439024390244,
+      "prRatio": 0.43333333333333335,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.43537414965986393,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 19,
+      "female": 10,
+      "medianAge": 64,
+      "party": "ARONA",
+      "total": 29,
+      "femaleRatio": 0.3448275862068966,
+      "wardRatio": 0,
+      "prRatio": 0.35714285714285715,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.18181818181818182,
+      "top10MedianAge": 30
+    },
+    {
+      "male": 19,
+      "female": 21,
+      "medianAge": 52.5,
+      "party": "THE GREENS",
+      "total": 40,
+      "femaleRatio": 0.525,
+      "wardRatio": 0.5277777777777778,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 45.5
+    },
+    {
+      "male": 2082,
+      "female": 2114,
+      "medianAge": 40.5,
+      "party": "AFRICAN TRANSFORMATION MOVEMENT",
+      "total": 4196,
+      "femaleRatio": 0.503813155386082,
+      "wardRatio": 0.4550819672131148,
+      "prRatio": 0.5316360913515538,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5184349134687735,
+      "top10MedianAge": 44
+    },
+    {
+      "male": 9,
+      "female": 1,
+      "medianAge": 48.5,
+      "party": "WITZENBERG ONAFHANKLIKE DEMOKRATIESE PARTY",
+      "total": 10,
+      "femaleRatio": 0.1,
+      "wardRatio": 0,
+      "prRatio": 0.14285714285714285,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.14285714285714285,
+      "top10MedianAge": 55
+    },
+    {
+      "male": 12,
+      "female": 16,
+      "medianAge": 31.5,
+      "party": "SOUTH AFRICAN UNITED NATIONAL DEMOCRATIC FRONT",
+      "total": 28,
+      "femaleRatio": 0.5714285714285714,
+      "wardRatio": 0.5625,
+      "prRatio": 0.5833333333333334,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 52.5
+    },
+    {
+      "male": 563,
+      "female": 236,
+      "medianAge": 54,
+      "party": "PAN AFRICANIST CONGRESS OF AZANIA",
+      "total": 799,
+      "femaleRatio": 0.295369211514393,
+      "wardRatio": 0.2953020134228188,
+      "prRatio": 0.2954091816367265,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.29518072289156627,
+      "top10MedianAge": 52.5
+    },
+    {
+      "male": 3,
+      "female": 3,
+      "medianAge": 49,
+      "party": "WITZENBERG PARTY",
+      "total": 6,
+      "femaleRatio": 0.5,
+      "wardRatio": 0,
+      "prRatio": 0.5,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 24,
+      "female": 14,
+      "medianAge": 48,
+      "party": "DEMOCRATIC UNION PLUS",
+      "total": 38,
+      "femaleRatio": 0.3684210526315789,
+      "wardRatio": 0.3076923076923077,
+      "prRatio": 0.4,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.391304347826087,
+      "top10MedianAge": 36
+    },
+    {
+      "male": 42,
+      "female": 28,
+      "medianAge": 36.5,
+      "party": "KZN INDEPENDENCE",
+      "total": 70,
+      "femaleRatio": 0.4,
+      "wardRatio": 0.3939393939393939,
+      "prRatio": 0.40540540540540543,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.375,
+      "top10MedianAge": 42
+    },
+    {
+      "male": 20,
+      "female": 12,
+      "medianAge": 42,
+      "party": "COMMUNITY FREEDOM PARTY",
+      "total": 32,
+      "femaleRatio": 0.375,
+      "wardRatio": 0,
+      "prRatio": 0.5217391304347826,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.5294117647058824,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 9,
+      "female": 7,
+      "medianAge": 41.5,
+      "party": "INDEPENDENT CIVIC MOVEMENT",
+      "total": 16,
+      "femaleRatio": 0.4375,
+      "wardRatio": 0,
+      "prRatio": 0.4666666666666667,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4444444444444444,
+      "top10MedianAge": 45
+    },
+    {
+      "male": 3,
+      "female": 2,
+      "medianAge": 33,
+      "party": "KHOI-SAN KINGDOM OF RSA",
+      "total": 5,
+      "femaleRatio": 0.4,
+      "wardRatio": 0.4,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 11,
+      "female": 3,
+      "medianAge": 51,
+      "party": "AFRICAN PROGRESSIVE MOVEMENT",
+      "total": 14,
+      "femaleRatio": 0.21428571428571427,
+      "wardRatio": 0.3333333333333333,
+      "prRatio": 0.125,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.125,
+      "top10MedianAge": 46
+    },
+    {
+      "male": 23,
+      "female": 24,
+      "medianAge": 36,
+      "party": "UNITED RESIDENTS FRONT",
+      "total": 47,
+      "femaleRatio": 0.5106382978723404,
+      "wardRatio": 0.5625,
+      "prRatio": 0.4838709677419355,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.7142857142857143,
+      "top10MedianAge": 31.5
+    },
+    {
+      "male": 25,
+      "female": 8,
+      "medianAge": 51,
+      "party": "ABAHLALI BASE MKHANYAKUDE MOVEMENT",
+      "total": 33,
+      "femaleRatio": 0.24242424242424243,
+      "wardRatio": 0.2,
+      "prRatio": 0.2608695652173913,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.2727272727272727,
+      "top10MedianAge": 49
+    },
+    {
+      "male": 25,
+      "female": 34,
+      "medianAge": 42,
+      "party": "AZANIAN INDEPENDENT COMMUNITY MOVEMENT",
+      "total": 59,
+      "femaleRatio": 0.576271186440678,
+      "wardRatio": 0.6785714285714286,
+      "prRatio": 0.4838709677419355,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4642857142857143,
+      "top10MedianAge": 43
+    },
+    {
+      "male": 2,
+      "female": 0,
+      "medianAge": 63,
+      "party": "DEMOCRATIC EQUALITY EMPOWERMENT PARTY",
+      "total": 2,
+      "femaleRatio": 0,
+      "wardRatio": 0,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 0,
+      "female": 1,
+      "medianAge": 35,
+      "party": "BLACK AND WHITE PARTY",
+      "total": 1,
+      "femaleRatio": 1,
+      "wardRatio": 0,
+      "prRatio": 1,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 1,
+      "top10MedianAge": 35
+    },
+    {
+      "male": 3,
+      "female": 14,
+      "medianAge": 62,
+      "party": "AGANG SOUTH AFRICA",
+      "total": 17,
+      "femaleRatio": 0.8235294117647058,
+      "wardRatio": 0,
+      "prRatio": 0.8235294117647058,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.8235294117647058,
+      "top10MedianAge": 62
+    },
+    {
+      "male": 0,
+      "female": 1,
+      "medianAge": 55,
+      "party": "KHOISAN KINGDOM AND ALL PEOPLE",
+      "total": 1,
+      "femaleRatio": 1,
+      "wardRatio": 1,
+      "prRatio": 0,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0,
+      "top10MedianAge": 0
+    },
+    {
+      "male": 25,
+      "female": 8,
+      "medianAge": 43,
+      "party": "KAROO DEMOCRATIC FORCE",
+      "total": 33,
+      "femaleRatio": 0.24242424242424243,
+      "wardRatio": 0.2,
+      "prRatio": 0.25,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.25925925925925924,
+      "top10MedianAge": 53
+    },
+    {
+      "male": 22,
+      "female": 6,
+      "medianAge": 70.5,
+      "party": "HIS LORDSHIP TO SAVE AND LEAD PARTY",
+      "total": 28,
+      "femaleRatio": 0.21428571428571427,
+      "wardRatio": 0.14285714285714285,
+      "prRatio": 0.23809523809523808,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.1,
+      "top10MedianAge": 55.5
+    },
+    {
+      "male": 16,
+      "female": 20,
+      "medianAge": 53.5,
+      "party": "AMALGAMATED RAINBOW MOVEMENT",
+      "total": 36,
+      "femaleRatio": 0.5555555555555556,
+      "wardRatio": 0,
+      "prRatio": 0.5555555555555556,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.6,
+      "top10MedianAge": 120
+    },
+    {
+      "male": 41,
+      "female": 36,
+      "medianAge": 55,
+      "party": "BETTER RESIDENTS ASSOCIATION",
+      "total": 77,
+      "femaleRatio": 0.4675324675324675,
+      "wardRatio": 0.42857142857142855,
+      "prRatio": 0.47619047619047616,
+      "top10Male": 5,
+      "top10Female": 5,
+      "top10FemaleRatio": 0.4857142857142857,
+      "top10MedianAge": 55
+    }
   ];
-
 
 
   var margin = {top: 19.5, right: 19.5, bottom: 80.5, left: 70},
       width = 960 - margin.right,
       height = 500 - margin.top - margin.bottom;
   var minAge = 30, maxAge = 60;
-  var minRadius = 0, maxRadius = 1000;
+  var minRadius = 50, maxRadius = 10000;
   var transitionDuration = 2000;
 
   var xScale = linear$1().domain([minAge, maxAge]).range([0, width]).nice(),
@@ -5628,6 +9312,24 @@
       dot
         .attr("cx", function(d) { return xScale(d.top10MedianAge); })
         .attr("cy", function(d) { return yScale(d.top10FemaleRatio); })
+        .attr("r", function(d) { return radiusScale(d.total); });
+  };
+
+  var position_ward = function(dot) {
+      selectAll(".info-text").style("display", "none");
+      selectAll(".info-line").style("display", "none");
+      dot
+        .attr("cx", function(d) { return xScale(d.medianAge); })
+        .attr("cy", function(d) { return yScale(d.wardRatio); })
+        .attr("r", function(d) { return radiusScale(d.total); });
+  };
+
+  var position_pr = function(dot) {
+      selectAll(".info-text").style("display", "none");
+      selectAll(".info-line").style("display", "none");
+      dot
+        .attr("cx", function(d) { return xScale(d.medianAge); })
+        .attr("cy", function(d) { return yScale(d.prRatio); })
         .attr("r", function(d) { return radiusScale(d.total); });
   };
 
@@ -5723,33 +9425,33 @@
 
   var party_da = svg.append("g");
   party_da.append("path")
-      .attr("d", "M440,220 L500,190")
+      .attr("d", "M670,220 L700,190")
       .classed("info-line", true);
 
   party_da.append("g")
-      .attr("transform", "translate(450,180)")
+      .attr("transform", "translate(650,180)")
       .append("text")
           .text("Democratic Alliance")
           .classed("info-text", true);
 
   var party_anc = svg.append("g");
   party_anc.append("path")
-      .attr("d", "M740,180 L700,190")
+      .attr("d", "M250,130 L250,190")
       .classed("info-line", true);
 
   party_anc.append("g")
-      .attr("transform", "translate(750,180)")
+      .attr("transform", "translate(200,120)")
       .append("text")
           .text("African National Congress")
           .classed("info-text", true);
 
   var party_eff = svg.append("g");
   party_eff.append("path")
-      .attr("d", "M340,180 L300,100")
+      .attr("d", "M120,220 L100,100")
       .classed("info-line", true);
 
   party_eff.append("g")
-      .attr("transform", "translate(400,90)")
+      .attr("transform", "translate(200,90)")
       .attr("text-anchor", "end")
       .append("text")
           .text("Economic Freedom Fighters")
@@ -5793,7 +9495,18 @@
 
   var buttons = container.append("div").classed("candidate-buttons", true);
   buttons.append("button")
+      .text("All Candidates")
+      .classed("action-button", true)
+      .on("click", function() {
+          selectAll(".dot").transition().duration(transitionDuration).call(position).on("end", function() {
+              selectAll(".info-text").style("display", "block");
+              selectAll(".info-line").style("display", "block");
+          });
+      });
+
+  buttons.append("button")
       .text("Top 10 Candidates")
+      .classed("action-button", true)
       .on("click", function() {
           selectAll(".dot").transition().duration(transitionDuration).call(position10).on("start", function() {
               selectAll(".info-text").style("display", "none");
@@ -5802,11 +9515,21 @@
       });
 
   buttons.append("button")
-      .text("All Candidates")
+      .text("Ward Candidates")
+      .classed("action-button", true)
       .on("click", function() {
-          selectAll(".dot").transition().duration(transitionDuration).call(position).on("end", function() {
-              selectAll(".info-text").style("display", "block");
-              selectAll(".info-line").style("display", "block");
+          selectAll(".dot").transition().duration(transitionDuration).call(position_ward).on("end", function() {
+              selectAll(".info-text").style("display", "none");
+              selectAll(".info-line").style("display", "none");
+          });
+      });
+  buttons.append("button")
+      .text("PR Candidates")
+      .classed("action-button", true)
+      .on("click", function() {
+          selectAll(".dot").transition().duration(transitionDuration).call(position_pr).on("end", function() {
+              selectAll(".info-text").style("display", "none");
+              selectAll(".info-line").style("display", "none");
           });
       });
 
